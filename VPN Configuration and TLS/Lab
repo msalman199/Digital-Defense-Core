@@ -1,0 +1,439 @@
+ VPN Configuration and TLS
+Objectives
+By the end of this lab, you will be able to:
+
+Understand the fundamentals of VPN technology and TLS encryption
+Install and configure OpenVPN server on a Linux system
+Create and manage VPN certificates and keys
+Establish VPN connections using OpenVPN client
+Test and verify VPN connectivity using command-line tools
+Analyze VPN and TLS traffic using Wireshark
+Troubleshoot common VPN configuration issues
+Validate TLS connections using curl with various security options
+Prerequisites
+Before starting this lab, you should have:
+
+Basic understanding of Linux command line operations
+Familiarity with network concepts (IP addresses, routing, DNS)
+Knowledge of file permissions and text editing in Linux
+Understanding of basic cryptography concepts (certificates, keys)
+Experience with package management in Linux
+Lab Environment
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured Ubuntu environment. No need to build your own VM or set up additional infrastructure. All tasks will be performed on a single Linux machine.
+
+Task 1: Set up a VPN using OpenVPN on Linux
+Subtask 1.1: Install OpenVPN and Easy-RSA
+First, we need to install the required packages for OpenVPN server and certificate management.
+
+# Update package repositories
+sudo apt update
+
+# Install OpenVPN and Easy-RSA
+sudo apt install -y openvpn easy-rsa
+
+# Verify installation
+openvpn --version
+Subtask 1.2: Set up the Certificate Authority (CA)
+OpenVPN requires certificates for secure authentication. We'll create our own Certificate Authority.
+
+# Create Easy-RSA directory
+mkdir ~/easy-rsa
+cd ~/easy-rsa
+
+# Copy Easy-RSA files
+cp -r /usr/share/easy-rsa/* .
+
+# Initialize the PKI (Public Key Infrastructure)
+./easyrsa init-pki
+
+# Build the Certificate Authority
+./easyrsa build-ca nopass
+When prompted for the Common Name, enter: VPN-Lab-CA
+
+Subtask 1.3: Generate Server Certificate and Key
+Now we'll create the server certificate and key pair.
+
+# Generate server certificate request and key
+./easyrsa gen-req vpn-server nopass
+
+# Sign the server certificate
+./easyrsa sign-req server vpn-server
+
+# Generate Diffie-Hellman parameters (this may take a few minutes)
+./easyrsa gen-dh
+
+# Generate TLS authentication key
+openvpn --genkey secret pki/ta.key
+Subtask 1.4: Generate Client Certificate and Key
+Create certificates for VPN clients.
+
+# Generate client certificate request and key
+./easyrsa gen-req vpn-client nopass
+
+# Sign the client certificate
+./easyrsa sign-req client vpn-client
+Subtask 1.5: Copy Certificates to OpenVPN Directory
+Move the generated certificates to the appropriate OpenVPN directories.
+
+# Create OpenVPN server directory
+sudo mkdir -p /etc/openvpn/server
+
+# Copy server certificates and keys
+sudo cp pki/ca.crt /etc/openvpn/server/
+sudo cp pki/issued/vpn-server.crt /etc/openvpn/server/
+sudo cp pki/private/vpn-server.key /etc/openvpn/server/
+sudo cp pki/dh.pem /etc/openvpn/server/
+sudo cp pki/ta.key /etc/openvpn/server/
+
+# Create client certificates directory
+mkdir ~/client-configs
+cp pki/ca.crt ~/client-configs/
+cp pki/issued/vpn-client.crt ~/client-configs/
+cp pki/private/vpn-client.key ~/client-configs/
+cp pki/ta.key ~/client-configs/
+Subtask 1.6: Create OpenVPN Server Configuration
+Create the main server configuration file.
+
+# Create server configuration file
+sudo tee /etc/openvpn/server/server.conf > /dev/null << 'EOF'
+# OpenVPN Server Configuration
+port 1194
+proto udp
+dev tun
+
+# SSL/TLS root certificate (ca), certificate (cert), and private key (key)
+ca ca.crt
+cert vpn-server.crt
+key vpn-server.key
+
+# Diffie hellman parameters
+dh dh.pem
+
+# Network topology
+topology subnet
+
+# Configure server mode and supply a VPN subnet
+server 10.8.0.0 255.255.255.0
+
+# Maintain a record of client <-> virtual IP address associations
+ifconfig-pool-persist /var/log/openvpn/ipp.txt
+
+# Push routes to the client to allow it to reach other private subnets
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
+
+# Enable compression on the VPN link
+compress lz4-v2
+push "compress lz4-v2"
+
+# The keepalive directive causes ping-like messages to be sent back and forth
+keepalive 10 120
+
+# TLS authentication
+tls-auth ta.key 0
+
+# Select a cryptographic cipher
+cipher AES-256-GCM
+auth SHA256
+
+# Enable TLS 1.2 minimum
+tls-version-min 1.2
+
+# The maximum number of concurrently connected clients
+max-clients 10
+
+# Run OpenVPN with reduced privileges
+user nobody
+group nogroup
+
+# The persist options will try to avoid accessing certain resources on restart
+persist-key
+persist-tun
+
+# Output a short status file showing current connections
+status /var/log/openvpn/openvpn-status.log
+
+# Log verbosity level
+verb 3
+
+# Silence repeating messages
+mute 20
+
+# Explicit exit notify
+explicit-exit-notify 1
+EOF
+Subtask 1.7: Configure IP Forwarding and Firewall
+Enable IP forwarding and configure firewall rules for VPN traffic.
+
+# Enable IP forwarding
+echo 'net.ipv4.ip_forward=1' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+# Create log directory
+sudo mkdir -p /var/log/openvpn
+
+# Configure UFW firewall
+sudo ufw allow 1194/udp
+sudo ufw allow OpenSSH
+
+# Add NAT rule for VPN traffic
+sudo iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+sudo iptables -A INPUT -i tun+ -j ACCEPT
+sudo iptables -A FORWARD -i tun+ -j ACCEPT
+sudo iptables -A FORWARD -i tun+ -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+sudo iptables -A FORWARD -i eth0 -o tun+ -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Save iptables rules
+sudo sh -c "iptables-save > /etc/iptables.rules"
+
+# Create script to restore iptables on boot
+sudo tee /etc/network/if-pre-up.d/iptables > /dev/null << 'EOF'
+#!/bin/bash
+/sbin/iptables-restore < /etc/iptables.rules
+EOF
+
+sudo chmod +x /etc/network/if-pre-up.d/iptables
+Subtask 1.8: Start and Enable OpenVPN Service
+Start the OpenVPN server and enable it to start automatically on boot.
+
+# Start OpenVPN server
+sudo systemctl start openvpn-server@server
+
+# Enable OpenVPN to start on boot
+sudo systemctl enable openvpn-server@server
+
+# Check service status
+sudo systemctl status openvpn-server@server
+
+# Verify VPN interface is created
+ip addr show tun0
+Subtask 1.9: Create Client Configuration File
+Create a client configuration file for connecting to the VPN.
+
+# Create client configuration
+tee ~/client-configs/client.ovpn > /dev/null << 'EOF'
+client
+dev tun
+proto udp
+remote 127.0.0.1 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+compress lz4-v2
+cipher AES-256-GCM
+auth SHA256
+tls-version-min 1.2
+key-direction 1
+verb 3
+mute 20
+EOF
+
+# Add certificates inline to client config
+echo '<ca>' >> ~/client-configs/client.ovpn
+cat ~/client-configs/ca.crt >> ~/client-configs/client.ovpn
+echo '</ca>' >> ~/client-configs/client.ovpn
+
+echo '<cert>' >> ~/client-configs/client.ovpn
+cat ~/client-configs/vpn-client.crt >> ~/client-configs/client.ovpn
+echo '</cert>' >> ~/client-configs/client.ovpn
+
+echo '<key>' >> ~/client-configs/client.ovpn
+cat ~/client-configs/vpn-client.key >> ~/client-configs/client.ovpn
+echo '</key>' >> ~/client-configs/client.ovpn
+
+echo '<tls-auth>' >> ~/client-configs/client.ovpn
+cat ~/client-configs/ta.key >> ~/client-configs/client.ovpn
+echo '</tls-auth>' >> ~/client-configs/client.ovpn
+Task 2: Test VPN and TLS using curl and Wireshark
+Subtask 2.1: Install and Configure Wireshark
+Install Wireshark for network traffic analysis.
+
+# Install Wireshark (non-interactive)
+sudo DEBIAN_FRONTEND=noninteractive apt install -y wireshark tshark
+
+# Add current user to wireshark group
+sudo usermod -a -G wireshark $USER
+
+# Install additional network tools
+sudo apt install -y curl wget netcat-openbsd tcpdump
+Subtask 2.2: Test VPN Connection
+Test the VPN connection using the OpenVPN client.
+
+# Test VPN connection in background
+sudo openvpn --config ~/client-configs/client.ovpn --daemon --log /tmp/vpn-client.log
+
+# Wait for connection to establish
+sleep 10
+
+# Check VPN connection status
+ps aux | grep openvpn
+
+# Verify VPN interface
+ip addr show | grep -A 5 tun
+
+# Test VPN connectivity
+ping -c 3 10.8.0.1
+
+# Check routing table
+ip route | grep tun
+Subtask 2.3: Capture VPN Traffic with Wireshark
+Use tshark (command-line Wireshark) to capture and analyze VPN traffic.
+
+# Start packet capture on VPN interface (run in background)
+sudo tshark -i tun0 -w /tmp/vpn_traffic.pcap &
+TSHARK_PID=$!
+
+# Generate some VPN traffic
+ping -c 5 8.8.8.8
+
+# Stop packet capture
+sleep 5
+sudo kill $TSHARK_PID
+
+# Analyze captured VPN traffic
+sudo tshark -r /tmp/vpn_traffic.pcap -V | head -50
+Subtask 2.4: Test TLS Connections with curl
+Test various TLS configurations using curl to understand TLS behavior.
+
+# Test basic HTTPS connection
+curl -v https://www.google.com 2>&1 | head -20
+
+# Test TLS version specific connections
+echo "Testing TLS 1.2:"
+curl -v --tlsv1.2 https://www.google.com 2>&1 | grep -E "(TLS|SSL)"
+
+echo "Testing TLS 1.3:"
+curl -v --tlsv1.3 https://www.google.com 2>&1 | grep -E "(TLS|SSL)"
+
+# Test certificate verification
+echo "Testing certificate verification:"
+curl -v --cacert /etc/ssl/certs/ca-certificates.crt https://www.google.com 2>&1 | grep -E "(certificate|verify)"
+Subtask 2.5: Capture and Analyze TLS Traffic
+Capture TLS handshake traffic for analysis.
+
+# Start packet capture for TLS traffic
+sudo tshark -i any -f "port 443" -w /tmp/tls_traffic.pcap &
+TSHARK_TLS_PID=$!
+
+# Generate TLS traffic
+curl -s https://www.example.com > /dev/null
+
+# Stop capture
+sleep 3
+sudo kill $TSHARK_TLS_PID
+
+# Analyze TLS handshake
+echo "TLS Handshake Analysis:"
+sudo tshark -r /tmp/tls_traffic.pcap -Y "tls.handshake.type" -T fields -e frame.number -e tls.handshake.type -e tls.handshake.version
+
+# Show TLS certificate information
+echo "Certificate Information:"
+sudo tshark -r /tmp/tls_traffic.pcap -Y "tls.handshake.certificate" -V | grep -A 10 "Certificate:"
+Subtask 2.6: Test VPN Performance and Security
+Perform various tests to validate VPN functionality and security.
+
+# Test DNS resolution through VPN
+echo "DNS Resolution Test:"
+nslookup google.com
+
+# Test external IP address (should show VPN server IP)
+echo "External IP Test:"
+curl -s https://ipinfo.io/ip
+
+# Test VPN encryption by capturing OpenVPN traffic
+echo "Capturing OpenVPN encrypted traffic:"
+sudo tshark -i any -f "port 1194" -c 10 -w /tmp/openvpn_encrypted.pcap &
+OPENVPN_PID=$!
+
+# Generate traffic through VPN
+ping -c 5 8.8.8.8 > /dev/null
+
+sleep 5
+sudo kill $OPENVPN_PID 2>/dev/null
+
+# Analyze OpenVPN encrypted packets
+echo "OpenVPN Encrypted Packet Analysis:"
+sudo tshark -r /tmp/openvpn_encrypted.pcap -T fields -e frame.number -e ip.src -e ip.dst -e udp.port -e data
+Subtask 2.7: Advanced TLS Testing
+Perform advanced TLS testing with different cipher suites and protocols.
+
+# Test different cipher suites
+echo "Testing AES-256-GCM cipher:"
+curl -v --ciphers ECDHE-RSA-AES256-GCM-SHA384 https://www.google.com 2>&1 | grep -E "(cipher|TLS)"
+
+# Test TLS with client certificate (self-signed for testing)
+echo "Creating test client certificate:"
+openssl req -x509 -newkey rsa:2048 -keyout /tmp/client.key -out /tmp/client.crt -days 1 -nodes -subj "/CN=test-client"
+
+# Test HTTPS with verbose output to see TLS details
+echo "Detailed TLS Connection Analysis:"
+curl -v --trace-ascii /tmp/curl_trace.txt https://www.example.com 2>&1 | grep -E "(TLS|SSL|cipher|protocol)"
+
+# Show first few lines of trace
+echo "TLS Trace Sample:"
+head -20 /tmp/curl_trace.txt
+Subtask 2.8: VPN Connection Verification and Cleanup
+Verify VPN functionality and clean up the test environment.
+
+# Check VPN server logs
+echo "VPN Server Logs:"
+sudo tail -10 /var/log/openvpn/openvpn-status.log
+
+# Check client connection logs
+echo "VPN Client Logs:"
+tail -10 /tmp/vpn-client.log
+
+# Test VPN tunnel integrity
+echo "VPN Tunnel Test:"
+traceroute -n 8.8.8.8 | head -5
+
+# Stop VPN client
+sudo pkill -f "openvpn.*client.ovpn"
+
+# Verify VPN disconnection
+sleep 3
+ip addr show | grep tun || echo "VPN tunnel disconnected successfully"
+
+# Display captured packet files
+echo "Generated packet capture files:"
+ls -la /tmp/*.pcap
+Troubleshooting Tips
+Common OpenVPN Issues
+Service won't start:
+
+Check configuration file syntax: sudo openvpn --config /etc/openvpn/server/server.conf --verb 9
+Verify certificate permissions: sudo ls -la /etc/openvpn/server/
+Check firewall rules: sudo ufw status
+Client connection fails:
+
+Verify server is listening: sudo netstat -ulnp | grep 1194
+Check client configuration file path and syntax
+Ensure certificates are not expired: openssl x509 -in ~/client-configs/vpn-client.crt -text -noout | grep "Not After"
+No internet access through VPN:
+
+Verify IP forwarding: cat /proc/sys/net/ipv4/ip_forward
+Check iptables NAT rules: sudo iptables -t nat -L
+Verify DNS settings in client configuration
+TLS Testing Issues
+curl TLS errors:
+
+Update CA certificates: sudo apt update && sudo apt install ca-certificates
+Use -k flag to ignore certificate errors for testing: curl -k https://example.com
+Check TLS version support: curl --version | grep TLS
+Wireshark capture issues:
+
+Run with sudo privileges for packet capture
+Ensure correct interface selection: ip link show
+Check capture filters: sudo tshark -D to list interfaces
+Conclusion
+In this lab, you have successfully:
+
+Configured a complete OpenVPN server with proper certificate management and security settings
+Generated and managed PKI certificates for both server and client authentication
+Established secure VPN connections and verified tunnel functionality
+Analyzed network traffic using Wireshark to understand VPN and TLS protocols
+Tested TLS connections with various security parameters using curl
+Implemented security best practices including proper encryption, authentication, and firewall configuration
+This hands-on experience provides you with practical skills in VPN deployment and TLS security testing that are essential for network security professionals. You now understand how VPN tunnels protect data in transit, how TLS ensures secure web communications, and how to use network analysis tools to verify security implementations.
