@@ -1,0 +1,441 @@
+ Firewall and IDS/IPS Configuration
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamental concepts of network security using firewalls and intrusion detection systems
+Install and configure Fail2Ban as an intrusion prevention system
+Implement basic firewall rules using ufw (Uncomplicated Firewall)
+Monitor and analyze security logs to identify potential threats
+Test firewall rules and intrusion detection capabilities
+Apply best practices for basic network security hardening
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of Linux command line operations
+Familiarity with text editors like nano or vim
+Knowledge of basic networking concepts (IP addresses, ports, protocols)
+Understanding of SSH and remote access concepts
+Basic knowledge of log file locations in Linux systems
+Lab Environment
+Al Nafi provides ready-to-use Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured Ubuntu environment. No need to build your own virtual machine or set up additional infrastructure.
+
+Your lab environment includes:
+
+Ubuntu 20.04 LTS or newer
+Root/sudo access
+Pre-installed essential networking tools
+Internet connectivity for package installation
+Task 1: Install and Configure Fail2Ban
+Subtask 1.1: Understanding Fail2Ban
+Fail2Ban is an intrusion prevention software framework that protects computer servers from brute-force attacks. It monitors log files and automatically bans IP addresses that show malicious behavior by updating firewall rules.
+
+Key concepts:
+
+Jail: A service that Fail2Ban monitors (like SSH, Apache, etc.)
+Filter: Defines patterns to detect failures in log files
+Action: What to do when a pattern is matched (usually ban the IP)
+Ban time: How long an IP address stays blocked
+Subtask 1.2: Install Fail2Ban
+First, update your system and install Fail2Ban:
+
+sudo apt update
+sudo apt install fail2ban -y
+Verify the installation:
+
+sudo systemctl status fail2ban
+You should see that Fail2Ban is active and running.
+
+Subtask 1.3: Configure Fail2Ban for SSH Protection
+Create a local configuration file to avoid conflicts during updates:
+
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+Open the configuration file for editing:
+
+sudo nano /etc/fail2ban/jail.local
+Find the [DEFAULT] section and modify these key parameters:
+
+[DEFAULT]
+# Ban time in seconds (10 minutes)
+bantime = 600
+
+# Find time window in seconds (10 minutes)
+findtime = 600
+
+# Maximum number of failures before ban
+maxretry = 3
+
+# Ignore local IP addresses
+ignoreip = 127.0.0.1/8 ::1 192.168.1.0/24
+Find the [sshd] section and ensure it looks like this:
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 600
+Save and exit the file (Ctrl+X, then Y, then Enter).
+
+Subtask 1.4: Start and Enable Fail2Ban
+Restart Fail2Ban to apply the new configuration:
+
+sudo systemctl restart fail2ban
+sudo systemctl enable fail2ban
+Verify that Fail2Ban is monitoring SSH:
+
+sudo fail2ban-client status
+Check the SSH jail specifically:
+
+sudo fail2ban-client status sshd
+Subtask 1.5: Test Fail2Ban Configuration
+Create a simple script to simulate failed SSH attempts (for testing purposes only):
+
+nano test_fail2ban.sh
+Add the following content:
+
+#!/bin/bash
+echo "Testing Fail2Ban - This will generate failed login attempts"
+echo "Current banned IPs:"
+sudo fail2ban-client status sshd
+
+# Generate some test log entries (simulating failed attempts)
+logger -p auth.info "sshd[12345]: Failed password for testuser from 192.168.100.100 port 22 ssh2"
+logger -p auth.info "sshd[12346]: Failed password for testuser from 192.168.100.100 port 22 ssh2"
+logger -p auth.info "sshd[12347]: Failed password for testuser from 192.168.100.100 port 22 ssh2"
+logger -p auth.info "sshd[12348]: Failed password for testuser from 192.168.100.100 port 22 ssh2"
+
+echo "Test entries added to auth.log"
+echo "Wait a few seconds and check status again..."
+sleep 5
+
+echo "Updated banned IPs:"
+sudo fail2ban-client status sshd
+Make the script executable and run it:
+
+chmod +x test_fail2ban.sh
+./test_fail2ban.sh
+Task 2: Implement Basic Firewall Rules in UFW
+Subtask 2.1: Understanding UFW
+UFW (Uncomplicated Firewall) is a user-friendly front-end for managing iptables firewall rules in Ubuntu. It provides a simple command-line interface for creating firewall rules without needing to learn complex iptables syntax.
+
+Key concepts:
+
+Default policies: What to do with traffic that doesn't match any rules
+Allow rules: Permit specific traffic
+Deny rules: Block specific traffic
+Port-based rules: Control access to specific services
+Application profiles: Pre-defined rules for common applications
+Subtask 2.2: Check UFW Status and Enable It
+Check the current status of UFW:
+
+sudo ufw status
+If UFW is inactive, enable it:
+
+sudo ufw enable
+Important: When enabling UFW, you might see a warning about disrupting SSH connections. Type 'y' to proceed, as we'll configure SSH access in the next steps.
+
+Subtask 2.3: Configure Default Policies
+Set up secure default policies:
+
+# Deny all incoming traffic by default
+sudo ufw default deny incoming
+
+# Allow all outgoing traffic by default
+sudo ufw default allow outgoing
+Verify the default policies:
+
+sudo ufw status verbose
+Subtask 2.4: Allow Essential Services
+Allow SSH access (critical for remote management):
+
+sudo ufw allow ssh
+Or specify the port number explicitly:
+
+sudo ufw allow 22/tcp
+Allow HTTP and HTTPS traffic (for web services):
+
+sudo ufw allow http
+sudo ufw allow https
+Or using port numbers:
+
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+Subtask 2.5: Create Specific Rules
+Allow access from a specific IP address:
+
+sudo ufw allow from 192.168.1.100
+Allow a specific port from a specific IP:
+
+sudo ufw allow from 192.168.1.100 to any port 3306
+Allow a range of ports:
+
+sudo ufw allow 8000:8010/tcp
+Deny access from a specific IP:
+
+sudo ufw deny from 203.0.113.100
+Subtask 2.6: View and Manage Rules
+List all rules with numbers:
+
+sudo ufw status numbered
+Delete a specific rule by number (replace X with the rule number):
+
+sudo ufw delete X
+Reset all rules (use with caution):
+
+sudo ufw --force reset
+Subtask 2.7: Test Firewall Rules
+Create a simple test script to verify firewall functionality:
+
+nano test_firewall.sh
+Add the following content:
+
+#!/bin/bash
+echo "=== UFW Firewall Status ==="
+sudo ufw status numbered
+
+echo ""
+echo "=== Testing Network Connectivity ==="
+
+# Test outgoing connectivity
+echo "Testing outgoing HTTP connection:"
+curl -I --connect-timeout 5 http://www.google.com 2>/dev/null | head -1
+
+echo "Testing outgoing HTTPS connection:"
+curl -I --connect-timeout 5 https://www.google.com 2>/dev/null | head -1
+
+echo ""
+echo "=== Current Network Connections ==="
+netstat -tuln | head -10
+
+echo ""
+echo "=== UFW Application Profiles ==="
+sudo ufw app list
+Make the script executable and run it:
+
+chmod +x test_firewall.sh
+./test_firewall.sh
+Subtask 2.8: Advanced UFW Configuration
+Create a custom application profile. First, create a profile file:
+
+sudo nano /etc/ufw/applications.d/myapp
+Add the following content:
+
+[MyWebApp]
+title=My Custom Web Application
+description=Custom web application running on port 8080
+ports=8080/tcp
+Update the application list and allow the custom application:
+
+sudo ufw app update MyWebApp
+sudo ufw allow MyWebApp
+Task 3: Integration and Monitoring
+Subtask 3.1: Monitor Security Logs
+Create a monitoring script to check both Fail2Ban and UFW logs:
+
+nano security_monitor.sh
+Add the following content:
+
+#!/bin/bash
+echo "=== Security Monitoring Dashboard ==="
+echo "Generated on: $(date)"
+echo ""
+
+echo "=== Fail2Ban Status ==="
+sudo fail2ban-client status
+echo ""
+
+echo "=== Currently Banned IPs ==="
+sudo fail2ban-client status sshd
+echo ""
+
+echo "=== Recent Authentication Failures ==="
+sudo tail -20 /var/log/auth.log | grep "Failed password"
+echo ""
+
+echo "=== UFW Status ==="
+sudo ufw status numbered
+echo ""
+
+echo "=== Recent UFW Blocks ==="
+sudo tail -20 /var/log/ufw.log 2>/dev/null || echo "No UFW log entries found"
+echo ""
+
+echo "=== System Resource Usage ==="
+echo "Memory Usage:"
+free -h
+echo ""
+echo "Disk Usage:"
+df -h / | tail -1
+echo ""
+
+echo "=== Active Network Connections ==="
+netstat -tuln | grep LISTEN | head -10
+Make the script executable and run it:
+
+chmod +x security_monitor.sh
+./security_monitor.sh
+Subtask 3.2: Create Automated Security Checks
+Create a comprehensive security check script:
+
+nano security_check.sh
+Add the following content:
+
+#!/bin/bash
+echo "=== Comprehensive Security Check ==="
+echo "Timestamp: $(date)"
+echo ""
+
+# Check if Fail2Ban is running
+echo "1. Checking Fail2Ban Service:"
+if systemctl is-active --quiet fail2ban; then
+    echo "   ✓ Fail2Ban is running"
+    echo "   Active jails: $(sudo fail2ban-client status | grep "Jail list" | cut -d: -f2 | tr -d ' ')"
+else
+    echo "   ✗ Fail2Ban is not running"
+fi
+echo ""
+
+# Check if UFW is enabled
+echo "2. Checking UFW Status:"
+ufw_status=$(sudo ufw status | head -1)
+if [[ $ufw_status == *"active"* ]]; then
+    echo "   ✓ UFW is active"
+    rule_count=$(sudo ufw status numbered | grep -c "^\[")
+    echo "   Active rules: $rule_count"
+else
+    echo "   ✗ UFW is inactive"
+fi
+echo ""
+
+# Check for recent security events
+echo "3. Recent Security Events:"
+failed_logins=$(sudo grep "Failed password" /var/log/auth.log | tail -5 | wc -l)
+echo "   Recent failed login attempts: $failed_logins"
+
+# Check open ports
+echo ""
+echo "4. Open Network Ports:"
+netstat -tuln | grep LISTEN | awk '{print $4}' | sort | uniq
+echo ""
+
+# Check system updates
+echo "5. System Update Status:"
+updates_available=$(apt list --upgradable 2>/dev/null | grep -c upgradable)
+echo "   Available updates: $updates_available"
+echo ""
+
+echo "=== Security Check Complete ==="
+Make the script executable and run it:
+
+chmod +x security_check.sh
+./security_check.sh
+Troubleshooting Common Issues
+Issue 1: Fail2Ban Not Starting
+If Fail2Ban fails to start, check the configuration:
+
+sudo fail2ban-client -t
+Check the service logs:
+
+sudo journalctl -u fail2ban -f
+Issue 2: UFW Blocking Legitimate Traffic
+If you accidentally block yourself out, you can disable UFW from the console:
+
+sudo ufw disable
+Then reconfigure your rules and re-enable it.
+
+Issue 3: Log Files Not Found
+Ensure log files exist and have proper permissions:
+
+sudo ls -la /var/log/auth.log
+sudo ls -la /var/log/ufw.log
+Issue 4: Testing Connectivity
+Use these commands to test network connectivity:
+
+# Test specific ports
+nc -zv localhost 22
+nc -zv localhost 80
+
+# Check listening services
+sudo ss -tlnp
+Best Practices and Security Considerations
+Regular Monitoring: Check security logs daily
+Update Rules: Review and update firewall rules monthly
+Backup Configurations: Keep backups of your security configurations
+Test Changes: Always test firewall changes in a safe environment first
+Document Rules: Maintain documentation of why each rule exists
+Monitor Performance: Ensure security tools don't impact system performance significantly
+Verification and Testing
+Run this final verification script to ensure everything is working correctly:
+
+nano final_verification.sh
+Add the following content:
+
+#!/bin/bash
+echo "=== Final Lab Verification ==="
+echo ""
+
+# Test 1: Fail2Ban Installation
+echo "Test 1: Fail2Ban Service Check"
+if systemctl is-active --quiet fail2ban; then
+    echo "✓ PASS: Fail2Ban is running"
+else
+    echo "✗ FAIL: Fail2Ban is not running"
+fi
+
+# Test 2: UFW Status
+echo ""
+echo "Test 2: UFW Firewall Check"
+if sudo ufw status | grep -q "Status: active"; then
+    echo "✓ PASS: UFW is active"
+else
+    echo "✗ FAIL: UFW is not active"
+fi
+
+# Test 3: SSH Rule Check
+echo ""
+echo "Test 3: SSH Access Rule Check"
+if sudo ufw status | grep -q "22/tcp"; then
+    echo "✓ PASS: SSH access rule configured"
+else
+    echo "✗ FAIL: SSH access rule not found"
+fi
+
+# Test 4: Configuration Files
+echo ""
+echo "Test 4: Configuration Files Check"
+if [ -f "/etc/fail2ban/jail.local" ]; then
+    echo "✓ PASS: Fail2Ban local configuration exists"
+else
+    echo "✗ FAIL: Fail2Ban local configuration missing"
+fi
+
+# Test 5: Log Monitoring
+echo ""
+echo "Test 5: Log File Access Check"
+if [ -r "/var/log/auth.log" ]; then
+    echo "✓ PASS: Authentication logs accessible"
+else
+    echo "✗ FAIL: Cannot access authentication logs"
+fi
+
+echo ""
+echo "=== Verification Complete ==="
+echo "If all tests show PASS, your lab is successfully completed!"
+Make the script executable and run it:
+
+chmod +x final_verification.sh
+./final_verification.sh
+Conclusion
+In this lab, you have successfully accomplished the following:
+
+Installed and configured Fail2Ban as an intrusion prevention system to protect against brute-force attacks
+Implemented basic firewall rules using UFW to control network traffic and secure your system
+Created monitoring scripts to track security events and system status
+Tested security configurations to ensure they work as expected
+Applied security best practices for network hardening
+These skills are fundamental for maintaining secure Linux systems in production environments. Fail2Ban provides automated protection against common attack patterns, while UFW gives you granular control over network access. Together, they form a solid foundation for system security.
+
+The knowledge gained in this lab directly applies to real-world scenarios where system administrators must protect servers from network-based attacks while maintaining legitimate access for users and services. These tools are widely used in enterprise environments and are essential components of the Digital Defense Core certification path.
+
+Remember to regularly monitor your security logs, update your rules as needed, and stay informed about new security threats and best practices. Security is an ongoing process, not a one-time configuration.
