@@ -1,0 +1,500 @@
+Introduction to Defense-in-Depth
+Objectives
+By the end of this lab, students will be able to:
+
+Understand and define defense-in-depth security strategies
+Identify the multiple layers of security in a comprehensive defense model
+Implement basic Role-Based Access Control (RBAC) models in Linux
+Create and manage user accounts with different privilege levels
+Write and execute scripts to automate security policy enforcement
+Apply practical defense-in-depth principles on a single Linux system
+Prerequisites
+Before starting this lab, students should have:
+
+Basic familiarity with Linux command line interface
+Understanding of file permissions and user management concepts
+Basic knowledge of text editors (nano, vim, or gedit)
+Fundamental understanding of cybersecurity concepts
+Lab Environment
+Al Nafi provides ready-to-use Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured Ubuntu environment. No need to build your own virtual machine or install additional software.
+
+Task 1: Define Defense-in-Depth Strategies
+Subtask 1.1: Understanding Defense-in-Depth Concepts
+Defense-in-depth is a cybersecurity strategy that employs multiple layers of security controls throughout an information system. Think of it like protecting a castle with multiple barriers: a moat, outer walls, inner walls, guards, and a secure keep.
+
+Create a documentation file to record your understanding:
+
+mkdir ~/defense-lab
+cd ~/defense-lab
+nano defense-concepts.txt
+Add the following content to the file:
+
+DEFENSE-IN-DEPTH STRATEGY DOCUMENTATION
+======================================
+
+1. PHYSICAL SECURITY LAYER
+   - Server room access controls
+   - Biometric authentication
+   - Security cameras and monitoring
+
+2. NETWORK SECURITY LAYER
+   - Firewalls (hardware and software)
+   - Intrusion Detection Systems (IDS)
+   - Network segmentation
+   - VPN access controls
+
+3. HOST SECURITY LAYER
+   - Operating system hardening
+   - Antivirus and anti-malware
+   - Host-based firewalls
+   - System monitoring
+
+4. APPLICATION SECURITY LAYER
+   - Input validation
+   - Authentication mechanisms
+   - Authorization controls
+   - Secure coding practices
+
+5. DATA SECURITY LAYER
+   - Encryption at rest and in transit
+   - Data classification
+   - Access controls
+   - Backup and recovery
+
+6. PROCEDURAL SECURITY LAYER
+   - Security policies and procedures
+   - User training and awareness
+   - Incident response plans
+   - Regular security audits
+Save and exit the file (Ctrl+X, then Y, then Enter).
+
+Subtask 1.2: Identifying Current System Security Layers
+Let's examine the existing security layers on our Linux system:
+
+# Check current firewall status
+sudo ufw status
+
+# View system users and their groups
+cat /etc/passwd | grep -E "(root|ubuntu|daemon)"
+
+# Check file permissions on critical directories
+ls -la /etc/passwd /etc/shadow /etc/sudoers
+
+# View currently running security-related services
+systemctl list-units --type=service | grep -E "(ssh|ufw|fail2ban)"
+Document your findings:
+
+nano system-security-assessment.txt
+Record what you observe about the current security posture of the system.
+
+Task 2: Implement Basic RBAC Models in Linux
+Subtask 2.1: Creating User Roles and Groups
+Role-Based Access Control (RBAC) assigns permissions to roles rather than individual users. Let's create a basic RBAC structure:
+
+# Create security-related groups
+sudo groupadd security-admins
+sudo groupadd security-analysts
+sudo groupadd security-users
+
+# Verify groups were created
+grep -E "(security-admins|security-analysts|security-users)" /etc/group
+Subtask 2.2: Creating Users for Different Roles
+Create users representing different security roles:
+
+# Create security administrator
+sudo useradd -m -s /bin/bash -G security-admins sec-admin
+sudo passwd sec-admin
+
+# Create security analyst
+sudo useradd -m -s /bin/bash -G security-analysts sec-analyst
+sudo passwd sec-analyst
+
+# Create regular security user
+sudo useradd -m -s /bin/bash -G security-users sec-user
+sudo passwd sec-user
+
+# Verify users were created
+tail -3 /etc/passwd
+When prompted, set simple passwords like SecAdmin123, SecAnalyst123, and SecUser123 respectively.
+
+Subtask 2.3: Setting Up Directory Structure with Permissions
+Create a directory structure that reflects different security levels:
+
+# Create security directories
+sudo mkdir -p /opt/security/{admin,analyst,shared,logs}
+
+# Set ownership and permissions
+sudo chown root:security-admins /opt/security/admin
+sudo chmod 750 /opt/security/admin
+
+sudo chown root:security-analysts /opt/security/analyst
+sudo chmod 750 /opt/security/analyst
+
+sudo chown root:security-users /opt/security/shared
+sudo chmod 755 /opt/security/shared
+
+sudo chown root:security-admins /opt/security/logs
+sudo chmod 740 /opt/security/logs
+
+# Verify permissions
+ls -la /opt/security/
+Subtask 2.4: Testing RBAC Implementation
+Test the access controls by switching between users:
+
+# Test as security admin
+sudo su - sec-admin
+whoami
+groups
+touch /opt/security/admin/admin-test.txt
+ls -la /opt/security/admin/
+exit
+
+# Test as security analyst
+sudo su - sec-analyst
+whoami
+groups
+touch /opt/security/analyst/analyst-test.txt
+# Try to access admin directory (should fail)
+ls /opt/security/admin/
+exit
+
+# Test as regular security user
+sudo su - sec-user
+whoami
+groups
+touch /opt/security/shared/user-test.txt
+# Try to access restricted directories (should fail)
+ls /opt/security/admin/
+ls /opt/security/analyst/
+exit
+Task 3: Write Scripts to Automate Policy Enforcement
+Subtask 3.1: Creating a User Management Script
+Create a script to automate user creation with proper RBAC assignment:
+
+nano ~/defense-lab/create-security-user.sh
+Add the following script content:
+
+#!/bin/bash
+
+# Security User Creation Script
+# Usage: ./create-security-user.sh <username> <role>
+
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <username> <role>"
+    echo "Roles: admin, analyst, user"
+    exit 1
+fi
+
+USERNAME=$1
+ROLE=$2
+
+case $ROLE in
+    "admin")
+        GROUP="security-admins"
+        ;;
+    "analyst")
+        GROUP="security-analysts"
+        ;;
+    "user")
+        GROUP="security-users"
+        ;;
+    *)
+        echo "Invalid role. Use: admin, analyst, or user"
+        exit 1
+        ;;
+esac
+
+# Check if user already exists
+if id "$USERNAME" &>/dev/null; then
+    echo "User $USERNAME already exists"
+    exit 1
+fi
+
+# Create user
+sudo useradd -m -s /bin/bash -G $GROUP $USERNAME
+
+if [ $? -eq 0 ]; then
+    echo "User $USERNAME created successfully with role $ROLE"
+    echo "Please set password for $USERNAME:"
+    sudo passwd $USERNAME
+    
+    # Log the creation
+    echo "$(date): User $USERNAME created with role $ROLE" | sudo tee -a /opt/security/logs/user-creation.log
+else
+    echo "Failed to create user $USERNAME"
+    exit 1
+fi
+Make the script executable:
+
+chmod +x ~/defense-lab/create-security-user.sh
+Subtask 3.2: Creating a Security Audit Script
+Create a script to audit system security settings:
+
+nano ~/defense-lab/security-audit.sh
+Add the following script content:
+
+#!/bin/bash
+
+# Security Audit Script
+# Performs basic security checks on the system
+
+AUDIT_LOG="/opt/security/logs/security-audit-$(date +%Y%m%d-%H%M%S).log"
+
+echo "=== SECURITY AUDIT REPORT ===" | sudo tee $AUDIT_LOG
+echo "Date: $(date)" | sudo tee -a $AUDIT_LOG
+echo "System: $(hostname)" | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+# Check user accounts
+echo "=== USER ACCOUNTS ===" | sudo tee -a $AUDIT_LOG
+echo "Security Admin Users:" | sudo tee -a $AUDIT_LOG
+getent group security-admins | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+echo "Security Analyst Users:" | sudo tee -a $AUDIT_LOG
+getent group security-analysts | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+echo "Security Regular Users:" | sudo tee -a $AUDIT_LOG
+getent group security-users | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+# Check file permissions on critical files
+echo "=== CRITICAL FILE PERMISSIONS ===" | sudo tee -a $AUDIT_LOG
+ls -la /etc/passwd /etc/shadow /etc/sudoers | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+# Check security directory permissions
+echo "=== SECURITY DIRECTORY PERMISSIONS ===" | sudo tee -a $AUDIT_LOG
+ls -la /opt/security/ | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+# Check firewall status
+echo "=== FIREWALL STATUS ===" | sudo tee -a $AUDIT_LOG
+sudo ufw status | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+# Check for failed login attempts
+echo "=== RECENT FAILED LOGIN ATTEMPTS ===" | sudo tee -a $AUDIT_LOG
+sudo grep "Failed password" /var/log/auth.log | tail -5 | sudo tee -a $AUDIT_LOG
+echo "" | sudo tee -a $AUDIT_LOG
+
+echo "Audit completed. Report saved to: $AUDIT_LOG"
+Make the script executable:
+
+chmod +x ~/defense-lab/security-audit.sh
+Subtask 3.3: Creating a Policy Enforcement Script
+Create a script that enforces security policies:
+
+nano ~/defense-lab/enforce-policies.sh
+Add the following script content:
+
+#!/bin/bash
+
+# Security Policy Enforcement Script
+# Enforces basic security policies on the system
+
+echo "=== SECURITY POLICY ENFORCEMENT ==="
+echo "Starting policy enforcement at $(date)"
+
+# Ensure proper permissions on security directories
+echo "Enforcing directory permissions..."
+sudo chown root:security-admins /opt/security/admin
+sudo chmod 750 /opt/security/admin
+
+sudo chown root:security-analysts /opt/security/analyst
+sudo chmod 750 /opt/security/analyst
+
+sudo chown root:security-users /opt/security/shared
+sudo chmod 755 /opt/security/shared
+
+sudo chown root:security-admins /opt/security/logs
+sudo chmod 740 /opt/security/logs
+
+# Set secure permissions on critical system files
+echo "Securing critical system files..."
+sudo chmod 644 /etc/passwd
+sudo chmod 640 /etc/shadow
+sudo chmod 440 /etc/sudoers
+
+# Enable firewall if not already enabled
+echo "Checking firewall status..."
+if ! sudo ufw status | grep -q "Status: active"; then
+    echo "Enabling UFW firewall..."
+    sudo ufw --force enable
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow ssh
+fi
+
+# Check for users with empty passwords
+echo "Checking for users with empty passwords..."
+EMPTY_PASS_USERS=$(sudo awk -F: '($2 == "") {print $1}' /etc/shadow)
+if [ ! -z "$EMPTY_PASS_USERS" ]; then
+    echo "WARNING: Users with empty passwords found: $EMPTY_PASS_USERS"
+    echo "$(date): Users with empty passwords: $EMPTY_PASS_USERS" | sudo tee -a /opt/security/logs/policy-violations.log
+fi
+
+# Log policy enforcement
+echo "$(date): Security policies enforced" | sudo tee -a /opt/security/logs/policy-enforcement.log
+
+echo "Policy enforcement completed successfully"
+Make the script executable:
+
+chmod +x ~/defense-lab/enforce-policies.sh
+Subtask 3.4: Testing the Automation Scripts
+Test each script to ensure they work correctly:
+
+# Test the user creation script
+./create-security-user.sh testuser analyst
+
+# Test the security audit script
+./security-audit.sh
+
+# Test the policy enforcement script
+./enforce-policies.sh
+
+# Verify the logs were created
+sudo ls -la /opt/security/logs/
+Subtask 3.5: Creating a Master Security Script
+Create a comprehensive script that combines all security functions:
+
+nano ~/defense-lab/security-manager.sh
+Add the following script content:
+
+#!/bin/bash
+
+# Master Security Management Script
+# Provides a menu-driven interface for security operations
+
+show_menu() {
+    echo ""
+    echo "=== DEFENSE-IN-DEPTH SECURITY MANAGER ==="
+    echo "1. Create Security User"
+    echo "2. Run Security Audit"
+    echo "3. Enforce Security Policies"
+    echo "4. View Security Logs"
+    echo "5. Test RBAC Access"
+    echo "6. Exit"
+    echo ""
+    read -p "Select an option (1-6): " choice
+}
+
+create_user() {
+    echo ""
+    read -p "Enter username: " username
+    echo "Available roles: admin, analyst, user"
+    read -p "Enter role: " role
+    ./create-security-user.sh $username $role
+}
+
+view_logs() {
+    echo ""
+    echo "Available log files:"
+    sudo ls -la /opt/security/logs/
+    echo ""
+    read -p "Enter log filename to view (or press Enter to skip): " logfile
+    if [ ! -z "$logfile" ]; then
+        sudo cat /opt/security/logs/$logfile
+    fi
+}
+
+test_rbac() {
+    echo ""
+    echo "RBAC Test Results:"
+    echo "Security Admin Directory:"
+    ls -la /opt/security/admin/ 2>/dev/null || echo "Access denied (as expected for non-admin users)"
+    echo ""
+    echo "Security Analyst Directory:"
+    ls -la /opt/security/analyst/ 2>/dev/null || echo "Access denied (as expected for non-analyst users)"
+    echo ""
+    echo "Shared Directory:"
+    ls -la /opt/security/shared/
+}
+
+while true; do
+    show_menu
+    case $choice in
+        1)
+            create_user
+            ;;
+        2)
+            ./security-audit.sh
+            ;;
+        3)
+            ./enforce-policies.sh
+            ;;
+        4)
+            view_logs
+            ;;
+        5)
+            test_rbac
+            ;;
+        6)
+            echo "Exiting Security Manager"
+            exit 0
+            ;;
+        *)
+            echo "Invalid option. Please select 1-6."
+            ;;
+    esac
+    read -p "Press Enter to continue..."
+done
+Make the script executable:
+
+chmod +x ~/defense-lab/security-manager.sh
+Test the master script:
+
+./security-manager.sh
+Verification and Testing
+Final System Verification
+Run a comprehensive verification of your defense-in-depth implementation:
+
+# Verify all users and groups
+echo "=== USERS AND GROUPS ==="
+getent group | grep security
+echo ""
+
+# Verify directory permissions
+echo "=== DIRECTORY PERMISSIONS ==="
+ls -la /opt/security/
+echo ""
+
+# Verify scripts are executable
+echo "=== SCRIPT PERMISSIONS ==="
+ls -la ~/defense-lab/*.sh
+echo ""
+
+# Run final security audit
+echo "=== FINAL SECURITY AUDIT ==="
+./security-audit.sh
+Troubleshooting Tips
+Common Issues and Solutions
+Issue: Permission denied when running scripts Solution: Ensure scripts have execute permissions using chmod +x script-name.sh
+
+Issue: Cannot access security directories Solution: Verify you are in the correct group using groups command and check directory permissions with ls -la
+
+Issue: User creation fails Solution: Check if the user already exists with id username and ensure you have sudo privileges
+
+Issue: Firewall commands fail Solution: Ensure UFW is installed with sudo apt update && sudo apt install ufw
+
+Conclusion
+In this lab, you have successfully implemented a comprehensive defense-in-depth security strategy on a single Linux system. You accomplished the following key objectives:
+
+Defense-in-Depth Understanding: You learned that security is not a single barrier but multiple layers working together, from physical security to procedural controls.
+
+RBAC Implementation: You created a functional Role-Based Access Control system with three distinct security roles (admin, analyst, user), each with appropriate permissions and access levels.
+
+Automation and Policy Enforcement: You developed scripts that automate user management, security auditing, and policy enforcement, demonstrating how automation strengthens security posture.
+
+Practical Security Skills: You gained hands-on experience with Linux security features, user management, file permissions, and system monitoring.
+
+This defense-in-depth approach is crucial in real-world cybersecurity because attackers rarely succeed through a single point of failure. By implementing multiple security layers, you create a robust security posture where if one layer is compromised, others continue to protect the system.
+
+The skills you developed in this lab form the foundation for more advanced cybersecurity practices and are directly applicable to enterprise security environments. The automation scripts you created demonstrate the importance of consistent policy enforcement and regular security auditing in maintaining a secure system.
+
+Remember that defense-in-depth is an ongoing process, not a one-time implementation. Regular audits, policy updates, and continuous monitoring are essential components of an effective cybersecurity strategy.
+
+Lab Terminal
+
+Instructions
