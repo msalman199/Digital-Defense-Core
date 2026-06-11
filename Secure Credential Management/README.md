@@ -1,0 +1,651 @@
+# 🔐 Secure Credential Management 
+
+> A hands-on cybersecurity lab for building production-grade credential management systems using Python, cryptography, and industry-standard security practices.
+
+![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Cryptography](https://img.shields.io/badge/Cryptography-Fernet%20%7C%20PBKDF2-FF6B6B?style=for-the-badge&logo=letsencrypt&logoColor=white)
+![bcrypt](https://img.shields.io/badge/bcrypt-Password%20Hashing-4CAF50?style=for-the-badge&logo=shield&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-Cloud%20Lab-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+![Security](https://img.shields.io/badge/Security-Enterprise%20Grade-2196F3?style=for-the-badge&logo=security&logoColor=white)
+![License](https://img.shields.io/badge/License-Educational-9C27B0?style=for-the-badge)
+
+---
+
+## 🎯 Objectives
+
+By the end of this lab, you will be able to:
+
+- ✅ Implement **automated password policy enforcement** using Python
+- ✅ Create **secure password generators** that meet policy requirements
+- ✅ Build **encrypted credential storage** systems using industry-standard encryption
+- ✅ Apply **password hashing techniques** with bcrypt
+- ✅ Develop **credential auditing and monitoring** capabilities
+
+---
+
+## 📋 Prerequisites
+
+| Requirement | Level |
+|---|---|
+| 🐍 Python Programming | Basic |
+| 🖥️ Linux Command Line | Basic |
+| ✏️ Text Editors (nano / vim) | Basic |
+| 🔒 Cybersecurity Concepts | Basic |
+
+---
+
+## 🌐 Lab Environment
+
+> **Al Nafi** provides ready-to-use Linux-based cloud machines for this lab.  
+> Click **Start Lab** to access your pre-configured environment with Python 3 and necessary tools already installed.
+
+---
+
+## 🗂️ Lab Structure
+
+```
+secure_credentials_lab/
+├── 📄 password_policy.py       # Task 1 — Policy enforcement
+├── 📄 password_generator.py    # Task 2 — Secure generation
+├── 📄 secure_storage.py        # Task 3 — Encrypted storage
+├── 📄 credential_audit.py      # Task 4 — Audit system
+├── 🔑 credentials.enc          # Encrypted credential store
+├── 🔑 salt.key                 # PBKDF2 salt file
+└── 📋 credential_audit.json    # Audit log
+```
+
+---
+
+## 🚀 Task 1 — Password Policy Enforcement
+
+![Task](https://img.shields.io/badge/Task-1%20of%204-FF5722?style=flat-square)
+![File](https://img.shields.io/badge/File-password__policy.py-607D8B?style=flat-square&logo=python)
+
+### ⚙️ Step 1 — Environment Setup
+
+Create your working directory and install required packages:
+
+```bash
+mkdir ~/secure_credentials_lab
+cd ~/secure_credentials_lab
+pip3 install cryptography bcrypt
+```
+
+---
+
+### 📝 Step 2 — Create Password Policy Checker
+
+Create **`password_policy.py`** with the following starter code:
+
+```python
+#!/usr/bin/env python3
+import re
+from datetime import datetime
+
+class PasswordPolicyChecker:
+    def __init__(self):
+        self.min_length = 8
+        self.max_length = 128
+        self.require_uppercase = True
+        self.require_lowercase = True
+        self.require_digits = True
+        self.require_special = True
+        self.special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        
+    def check_length(self, password):
+        """
+        Check if password meets length requirements.
+        Returns: tuple: (bool, str) - (passed, message)
+        """
+        # TODO: Implement length validation
+        # TODO: Check minimum and maximum length
+        # TODO: Return appropriate status and message
+        pass
+    
+    def check_uppercase(self, password):
+        """
+        Check if password contains uppercase letters.
+        Returns: tuple: (bool, str) - (passed, message)
+        """
+        # TODO: Use regex to check for uppercase letters
+        # TODO: Return validation result
+        pass
+    
+    def check_lowercase(self, password):
+        """
+        Check if password contains lowercase letters.
+        Returns: tuple: (bool, str) - (passed, message)
+        """
+        # TODO: Implement lowercase validation
+        pass
+    
+    def check_digits(self, password):
+        """
+        Check if password contains digits.
+        Returns: tuple: (bool, str) - (passed, message)
+        """
+        # TODO: Implement digit validation
+        pass
+    
+    def check_special_chars(self, password):
+        """
+        Check if password contains special characters.
+        Returns: tuple: (bool, str) - (passed, message)
+        """
+        # TODO: Check for special characters from self.special_chars
+        pass
+    
+    def check_common_patterns(self, password):
+        """
+        Check for common weak patterns like '123456', 'password', etc.
+        Returns: tuple: (bool, str) - (passed, message)
+        """
+        # TODO: Define list of weak patterns
+        # TODO: Check password against patterns
+        pass
+    
+    def validate_password(self, password):
+        """
+        Validate password against all policies.
+        Returns: tuple: (bool, list) - (all_passed, results)
+        """
+        # TODO: Run all check methods
+        # TODO: Collect results and print formatted output
+        # TODO: Return overall validation status
+        pass
+
+def main():
+    checker = PasswordPolicyChecker()
+    # TODO: Test with sample passwords
+    # TODO: Implement interactive testing mode
+    pass
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+### 🧪 Step 3 — Test Your Implementation
+
+```bash
+chmod +x password_policy.py
+python3 password_policy.py
+```
+
+| Password | Expected Result |
+|---|---|
+| `weak` | ❌ Fail — too short, missing chars |
+| `password123` | ❌ Fail — common pattern |
+| `StrongP@ss1` | ✅ Pass |
+| `MySecure123!` | ✅ Pass |
+
+---
+
+## 🔑 Task 2 — Secure Password Generation
+
+![Task](https://img.shields.io/badge/Task-2%20of%204-FF9800?style=flat-square)
+![File](https://img.shields.io/badge/File-password__generator.py-607D8B?style=flat-square&logo=python)
+![secrets](https://img.shields.io/badge/Module-secrets-3776AB?style=flat-square&logo=python)
+
+### 📝 Step 1 — Create Password Generator
+
+Create **`password_generator.py`**:
+
+```python
+#!/usr/bin/env python3
+import random
+import string
+import secrets
+from password_policy import PasswordPolicyChecker
+
+class SecurePasswordGenerator:
+    def __init__(self):
+        self.uppercase = string.ascii_uppercase
+        self.lowercase = string.ascii_lowercase
+        self.digits = string.digits
+        self.special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        self.policy_checker = PasswordPolicyChecker()
+    
+    def generate_password(self, length=12):
+        """
+        Generate a secure password meeting policy requirements.
+        Args:    length: Desired password length (minimum 8)
+        Returns: str: Generated password
+        """
+        # TODO: Ensure minimum length of 8
+        # TODO: Add at least one character from each required category
+        # TODO: Fill remaining length with random characters
+        # TODO: Shuffle the password characters using secrets.SystemRandom()
+        # TODO: Validate against policy and regenerate if needed
+        pass
+    
+    def generate_multiple_passwords(self, count=5, length=12):
+        """
+        Generate multiple secure passwords.
+        Args:    count: Number of passwords to generate
+                 length: Length of each password
+        Returns: list: List of generated passwords
+        """
+        # TODO: Generate specified number of passwords
+        # TODO: Return list of passwords
+        pass
+
+def main():
+    generator = SecurePasswordGenerator()
+    # TODO: Create menu system with options:
+    # 1. Generate single password
+    # 2. Generate multiple passwords
+    # 3. Custom length password
+    # 4. Exit
+    pass
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+### 🧪 Step 2 — Test Password Generation
+
+```bash
+python3 password_generator.py
+```
+
+Verify that generated passwords:
+
+- 🔢 Meet **all policy requirements**
+- 🎲 Have **sufficient randomness**
+- 🔄 Are **different each time**
+
+---
+
+## 🛡️ Task 3 — Encrypted Credential Storage
+
+![Task](https://img.shields.io/badge/Task-3%20of%204-4CAF50?style=flat-square)
+![File](https://img.shields.io/badge/File-secure__storage.py-607D8B?style=flat-square&logo=python)
+![Fernet](https://img.shields.io/badge/Encryption-Fernet%20AES--128-FF6B6B?style=flat-square)
+![PBKDF2](https://img.shields.io/badge/KDF-PBKDF2%20100k%20iters-2196F3?style=flat-square)
+![bcrypt](https://img.shields.io/badge/Hashing-bcrypt-4CAF50?style=flat-square)
+
+### 📝 Step 1 — Create Secure Storage System
+
+Create **`secure_storage.py`**:
+
+```python
+#!/usr/bin/env python3
+import os
+import json
+import bcrypt
+import getpass
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import base64
+from datetime import datetime
+
+class SecureCredentialManager:
+    def __init__(self, storage_file="credentials.enc"):
+        self.storage_file = storage_file
+        self.salt_file = "salt.key"
+        self.credentials = {}
+        
+    def generate_key_from_password(self, password, salt=None):
+        """
+        Generate encryption key from master password using PBKDF2.
+        Args:    password: Master password
+                 salt: Salt bytes (generated if None)
+        Returns: bytes: Encryption key
+        """
+        # TODO: Generate or load salt
+        # TODO: Use PBKDF2HMAC with SHA256, 100000 iterations
+        # TODO: Return base64-encoded key
+        pass
+    
+    def load_salt(self):
+        """Load salt from file or return None."""
+        # TODO: Read salt from self.salt_file
+        # TODO: Handle FileNotFoundError
+        pass
+    
+    def hash_password(self, password):
+        """
+        Hash password using bcrypt.
+        Args:    password: Plain text password
+        Returns: str: Hashed password
+        """
+        # TODO: Generate salt with bcrypt.gensalt()
+        # TODO: Hash password with bcrypt.hashpw()
+        # TODO: Return decoded hash string
+        pass
+    
+    def verify_password(self, password, hashed):
+        """
+        Verify password against hash.
+        Args:    password: Plain text password
+                 hashed: Stored hash
+        Returns: bool: True if password matches
+        """
+        # TODO: Use bcrypt.checkpw() to verify
+        pass
+    
+    def encrypt_data(self, data, key):
+        """
+        Encrypt data using Fernet symmetric encryption.
+        Args:    data: Dictionary to encrypt
+                 key: Encryption key
+        Returns: bytes: Encrypted data
+        """
+        # TODO: Create Fernet instance
+        # TODO: Convert data to JSON and encrypt
+        pass
+    
+    def decrypt_data(self, encrypted_data, key):
+        """
+        Decrypt data using Fernet.
+        Args:    encrypted_data: Encrypted bytes
+                 key: Encryption key
+        Returns: dict: Decrypted data
+        """
+        # TODO: Create Fernet instance
+        # TODO: Decrypt and parse JSON
+        pass
+    
+    def save_credentials(self, master_password):
+        """Save encrypted credentials to file."""
+        # TODO: Generate key from master password
+        # TODO: Encrypt credentials dictionary
+        # TODO: Write to storage file
+        pass
+    
+    def load_credentials(self, master_password):
+        """Load and decrypt credentials from file."""
+        # TODO: Check if storage file exists
+        # TODO: Load salt and generate key
+        # TODO: Read and decrypt credentials
+        # TODO: Handle incorrect password gracefully
+        pass
+    
+    def add_credential(self, service, username, password):
+        """
+        Add a new credential.
+        Args: service, username, password (will be hashed)
+        """
+        # TODO: Hash the password
+        # TODO: Store credential with metadata (created, last_modified)
+        pass
+    
+    def get_credential(self, service):
+        """Retrieve credential information (without password hash)."""
+        # TODO: Return credential info if exists
+        pass
+    
+    def verify_credential_password(self, service, password):
+        """Verify a password for a service."""
+        # TODO: Get stored hash and verify password
+        pass
+    
+    def list_services(self):
+        """Return list of all stored service names."""
+        # TODO: Return list of credential keys
+        pass
+    
+    def update_credential(self, service, username=None, password=None):
+        """Update existing credential."""
+        # TODO: Update username and/or password
+        # TODO: Update last_modified timestamp
+        pass
+    
+    def delete_credential(self, service):
+        """Delete a credential."""
+        # TODO: Remove credential from dictionary
+        pass
+
+def main():
+    manager = SecureCredentialManager()
+    # TODO: Prompt for master password
+    # TODO: Load existing credentials
+    # TODO: Create menu system with options:
+    #   1. Add new credential
+    #   2. View credential
+    #   3. List all services
+    #   4. Update credential
+    #   5. Delete credential
+    #   6. Verify password
+    #   7. Save and exit
+    #   8. Exit without saving
+    pass
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+### 🧪 Step 2 — Test Credential Storage
+
+```bash
+python3 secure_storage.py
+```
+
+Test the following operations in order:
+
+- 🔐 Create a **master password**
+- ➕ Add test credentials (`gmail`, `github`, etc.)
+- 💾 **Save and exit**
+- 🔓 Reload with the **correct** master password
+- ✅ Verify password retrieval works
+- ❌ Test with a **wrong** master password
+
+---
+
+## 📊 Task 4 — Credential Auditing
+
+![Task](https://img.shields.io/badge/Task-4%20of%204-9C27B0?style=flat-square)
+![File](https://img.shields.io/badge/File-credential__audit.py-607D8B?style=flat-square&logo=python)
+![Audit](https://img.shields.io/badge/Feature-Audit%20Logging-9C27B0?style=flat-square)
+
+### 📝 Step 1 — Create Audit System
+
+Create **`credential_audit.py`**:
+
+```python
+#!/usr/bin/env python3
+import json
+import os
+from datetime import datetime, timedelta
+from secure_storage import SecureCredentialManager
+import getpass
+
+class CredentialAuditor:
+    def __init__(self, audit_file="credential_audit.json"):
+        self.audit_file = audit_file
+        self.audit_log = []
+        self.load_audit_log()
+    
+    def load_audit_log(self):
+        """Load existing audit log from file."""
+        # TODO: Load JSON audit log if exists
+        pass
+    
+    def save_audit_log(self):
+        """Save audit log to file."""
+        # TODO: Write audit log as JSON
+        pass
+    
+    def log_event(self, event_type, service, details=""):
+        """
+        Log a credential-related event.
+        Args: event_type (add/update/delete/access), service, details
+        """
+        # TODO: Create event dictionary with timestamp
+        # TODO: Append to audit log and save
+        pass
+    
+    def analyze_credential_age(self, manager):
+        """
+        Analyze age of stored credentials.
+        Args: manager: SecureCredentialManager instance
+        """
+        # TODO: Get all services from manager
+        # TODO: Calculate age of each credential
+        # TODO: Flag credentials older than 90 days
+        # TODO: Print formatted report
+        pass
+    
+    def generate_security_report(self, manager):
+        """
+        Generate comprehensive security report.
+        Args: manager: SecureCredentialManager instance
+        """
+        # TODO: Count total credentials
+        # TODO: Analyze recent activity (last 30 days)
+        # TODO: Break down event types
+        # TODO: Provide security recommendations
+        pass
+    
+    def show_recent_activity(self, days=7):
+        """
+        Show recent audit activity.
+        Args: days: Number of days to show
+        """
+        # TODO: Filter events by date
+        # TODO: Display formatted activity log
+        pass
+
+def main():
+    manager = SecureCredentialManager()
+    auditor = CredentialAuditor()
+    # TODO: Load credentials with master password
+    # TODO: Create menu with audit options:
+    #   1. Analyze credential age
+    #   2. Generate security report
+    #   3. Show recent activity
+    #   4. Log manual event
+    #   5. Exit
+    pass
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+### 🧪 Step 2 — Test Audit System
+
+```bash
+python3 credential_audit.py
+```
+
+Generate reports to verify:
+
+- 📅 **Credential age analysis**
+- 💡 **Security recommendations**
+- 📋 **Activity logging**
+
+---
+
+## ✅ Expected Outcomes
+
+After completing this lab, you will have built:
+
+| Component | Description | Status |
+|---|---|---|
+| 🔍 Password Policy System | Validates passwords against security requirements | 📦 Task 1 |
+| ⚙️ Password Generator | Creates strong, policy-compliant passwords | 📦 Task 2 |
+| 🛡️ Encrypted Storage | Securely stores credentials with master password | 📦 Task 3 |
+| 📊 Audit System | Tracks and analyzes credential usage | 📦 Task 4 |
+
+### 🔬 Key Security Features Implemented
+
+```
+🔐  PBKDF2 key derivation         →  100,000 iterations
+🔒  Fernet symmetric encryption   →  AES-128-CBC under the hood
+🧂  bcrypt password hashing       →  Automatic salting
+📏  Password policy enforcement   →  Length, charset, patterns
+📅  Credential age monitoring     →  90-day rotation alerts
+📋  Audit logging                 →  Full event trail
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+### ❗ `ModuleNotFoundError: No module named 'cryptography'`
+
+```bash
+pip3 install cryptography bcrypt
+# or
+pip3 install --user cryptography bcrypt
+```
+
+---
+
+### ❗ `Permission denied` when running scripts
+
+```bash
+chmod +x password_policy.py
+chmod +x password_generator.py
+chmod +x secure_storage.py
+chmod +x credential_audit.py
+```
+
+---
+
+### ❗ `Wrong master password` error when loading credentials
+
+> ⚠️ The master password is **case-sensitive**.  
+> If forgotten, delete `credentials.enc` and `salt.key` to start fresh.
+
+```bash
+rm credentials.enc salt.key
+```
+
+---
+
+### ❗ Import errors between modules
+
+> ✅ Ensure **all Python files are in the same directory**  
+> ✅ Always use `python3` (not `python`) to run scripts
+
+---
+
+## 📚 Key Takeaways
+
+> 🚫 **Never** store passwords in plain text  
+> 🔑 Use strong **key derivation functions** (PBKDF2) for encryption keys  
+> 🧂 Hash passwords with **bcrypt** before storage  
+> 📏 Implement **comprehensive password policies**  
+> 👁️ **Monitor and audit** credential usage  
+> 🔄 **Regular password rotation** improves security  
+
+---
+
+## 🔭 Next Steps
+
+- [ ] 🕐 Extend the system with **password expiration policies**
+- [ ] 📱 Add **two-factor authentication** support
+- [ ] 📊 Implement **password strength scoring**
+- [ ] 💾 Create **backup and recovery mechanisms**
+- [ ] 🔗 Add **integration with password managers**
+
+---
+
+## 🧰 Technology Stack
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![cryptography](https://img.shields.io/badge/cryptography-FF6B6B?style=for-the-badge&logo=letsencrypt&logoColor=white)
+![bcrypt](https://img.shields.io/badge/bcrypt-4CAF50?style=for-the-badge&logoColor=white)
+![JSON](https://img.shields.io/badge/JSON-000000?style=for-the-badge&logo=json&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+![regex](https://img.shields.io/badge/regex-2196F3?style=for-the-badge&logoColor=white)
+![secrets](https://img.shields.io/badge/secrets%20module-9C27B0?style=for-the-badge&logo=python&logoColor=white)
+
+---
+
+<div align="center">
+
+**Built for the Al Nafi Cybersecurity Lab Program**  
+*These skills are fundamental for building secure applications and managing credentials in enterprise environments.*
+
+</div>
