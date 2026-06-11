@@ -1,0 +1,722 @@
+Building a Secure Network Architecture
+Objectives
+By the end of this lab, you will be able to:
+
+Understand the fundamentals of network segmentation and its security benefits
+Configure iptables rules to create network traffic segmentation
+Implement firewall rules to control traffic flow between network segments
+Create automated scripts for network configuration management
+Apply security best practices for network architecture design
+Troubleshoot common network segmentation issues
+Prerequisites
+Before starting this lab, you should have:
+
+Basic understanding of Linux command line operations
+Familiarity with network concepts (IP addresses, subnets, ports)
+Knowledge of basic shell scripting
+Understanding of TCP/IP protocol fundamentals
+Root or sudo access to a Linux system
+Lab Environment
+Ready-to-Use Cloud Machines: Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own VM or set up additional infrastructure.
+
+Your lab environment includes:
+
+Ubuntu 20.04 LTS or newer
+iptables firewall utility pre-installed
+Network simulation tools
+Text editors (nano, vim)
+All necessary permissions for network configuration
+Task 1: Understanding Network Segmentation with iptables
+Subtask 1.1: Examine Current Network Configuration
+First, let's examine the current network setup and understand what we're working with.
+
+Check your current network interfaces:
+ip addr show
+View current routing table:
+ip route show
+Check existing iptables rules:
+sudo iptables -L -v -n
+Display current network connections:
+netstat -tuln
+Subtask 1.2: Create Virtual Network Interfaces
+To simulate network segmentation on a single machine, we'll create virtual network interfaces representing different network segments.
+
+Create the first virtual interface for the DMZ segment:
+sudo ip link add name dmz0 type dummy
+sudo ip addr add 192.168.10.1/24 dev dmz0
+sudo ip link set dmz0 up
+Create the second virtual interface for the Internal segment:
+sudo ip link add name internal0 type dummy
+sudo ip addr add 192.168.20.1/24 dev internal0
+sudo ip link set internal0 up
+Create the third virtual interface for the Management segment:
+sudo ip link add name mgmt0 type dummy
+sudo ip addr add 192.168.30.1/24 dev mgmt0
+sudo ip link set mgmt0 up
+Verify the new interfaces:
+ip addr show | grep -E "(dmz0|internal0|mgmt0)"
+Subtask 1.3: Enable IP Forwarding
+Enable IP forwarding to allow traffic routing between segments:
+
+Enable IP forwarding temporarily:
+sudo sysctl net.ipv4.ip_forward=1
+Make the change permanent:
+echo 'net.ipv4.ip_forward=1' | sudo tee -a /etc/sysctl.conf
+Verify IP forwarding is enabled:
+cat /proc/sys/net/ipv4/ip_forward
+Task 2: Implementing Network Segmentation with iptables
+Subtask 2.1: Clear Existing Rules and Set Default Policies
+Flush all existing iptables rules:
+sudo iptables -F
+sudo iptables -X
+sudo iptables -t nat -F
+sudo iptables -t nat -X
+Set default policies (we'll start with ACCEPT and then secure):
+sudo iptables -P INPUT ACCEPT
+sudo iptables -P FORWARD ACCEPT
+sudo iptables -P OUTPUT ACCEPT
+Subtask 2.2: Create Basic Segmentation Rules
+Now we'll create rules to segment network traffic between our virtual network segments.
+
+Create a script to implement basic segmentation rules:
+nano ~/network_segmentation.sh
+Add the following content to the script:
+#!/bin/bash
+
+# Network Segmentation Script
+# This script implements basic network segmentation using iptables
+
+echo "Implementing Network Segmentation Rules..."
+
+# Define network segments
+DMZ_NET="192.168.10.0/24"
+INTERNAL_NET="192.168.20.0/24"
+MGMT_NET="192.168.30.0/24"
+
+# Allow loopback traffic
+iptables -A INPUT -i lo -j ACCEPT
+iptables -A OUTPUT -o lo -j ACCEPT
+
+# Allow established and related connections
+iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# DMZ Rules - Allow limited access
+# Allow HTTP and HTTPS from any source to DMZ
+iptables -A FORWARD -d $DMZ_NET -p tcp --dport 80 -j ACCEPT
+iptables -A FORWARD -d $DMZ_NET -p tcp --dport 443 -j ACCEPT
+
+# Allow SSH from management network to DMZ
+iptables -A FORWARD -s $MGMT_NET -d $DMZ_NET -p tcp --dport 22 -j ACCEPT
+
+# Internal Network Rules
+# Allow internal network to access DMZ services
+iptables -A FORWARD -s $INTERNAL_NET -d $DMZ_NET -p tcp --dport 80 -j ACCEPT
+iptables -A FORWARD -s $INTERNAL_NET -d $DMZ_NET -p tcp --dport 443 -j ACCEPT
+
+# Block direct access from DMZ to Internal network
+iptables -A FORWARD -s $DMZ_NET -d $INTERNAL_NET -j DROP
+
+# Management Network Rules
+# Allow management network full access to other segments
+iptables -A FORWARD -s $MGMT_NET -j ACCEPT
+
+# Block access from other segments to management network
+iptables -A FORWARD -d $MGMT_NET ! -s $MGMT_NET -j DROP
+
+# Log dropped packets for monitoring
+iptables -A FORWARD -j LOG --log-prefix "DROPPED: " --log-level 4
+iptables -A FORWARD -j DROP
+
+echo "Network segmentation rules applied successfully!"
+echo "Use 'sudo iptables -L -v -n' to view current rules"
+Make the script executable and run it:
+chmod +x ~/network_segmentation.sh
+sudo ~/network_segmentation.sh
+Verify the rules were applied:
+sudo iptables -L FORWARD -v -n
+Subtask 2.3: Test Network Segmentation
+Let's test our segmentation rules using network simulation.
+
+Create a test script to simulate network traffic:
+nano ~/test_segmentation.sh
+Add the following content:
+#!/bin/bash
+
+# Network Segmentation Test Script
+
+echo "Testing Network Segmentation Rules..."
+
+# Test 1: Simulate HTTP traffic to DMZ (should be allowed)
+echo "Test 1: HTTP traffic to DMZ"
+sudo iptables -I FORWARD 1 -d 192.168.10.0/24 -p tcp --dport 80 -j LOG --log-prefix "HTTP_TO_DMZ: "
+
+# Test 2: Simulate DMZ to Internal traffic (should be blocked)
+echo "Test 2: DMZ to Internal network traffic"
+sudo iptables -I FORWARD 1 -s 192.168.10.0/24 -d 192.168.20.0/24 -j LOG --log-prefix "DMZ_TO_INTERNAL: "
+
+# Test 3: Simulate Management to DMZ SSH (should be allowed)
+echo "Test 3: Management to DMZ SSH"
+sudo iptables -I FORWARD 1 -s 192.168.30.0/24 -d 192.168.10.0/24 -p tcp --dport 22 -j LOG --log-prefix "MGMT_TO_DMZ_SSH: "
+
+echo "Test rules added. Check /var/log/kern.log for traffic logs"
+echo "Use 'sudo tail -f /var/log/kern.log | grep -E \"HTTP_TO_DMZ|DMZ_TO_INTERNAL|MGMT_TO_DMZ_SSH\"' to monitor"
+Make executable and run:
+chmod +x ~/test_segmentation.sh
+sudo ~/test_segmentation.sh
+Monitor the logs in a separate terminal:
+sudo tail -f /var/log/kern.log | grep -E "HTTP_TO_DMZ|DMZ_TO_INTERNAL|MGMT_TO_DMZ_SSH|DROPPED"
+Task 3: Creating Automated Network Configuration Scripts
+Subtask 3.1: Build a Comprehensive Network Setup Script
+Create an automated script that can set up the entire network architecture.
+
+Create the main automation script:
+nano ~/automated_network_setup.sh
+Add the following comprehensive script:
+#!/bin/bash
+
+# Automated Network Architecture Setup Script
+# This script creates a complete secure network architecture
+
+set -e  # Exit on any error
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_status() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to check if running as root
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        print_error "This script must be run as root or with sudo"
+        exit 1
+    fi
+}
+
+# Function to backup current iptables rules
+backup_iptables() {
+    print_status "Backing up current iptables rules..."
+    iptables-save > /tmp/iptables_backup_$(date +%Y%m%d_%H%M%S).rules
+    print_status "Backup saved to /tmp/"
+}
+
+# Function to create virtual network interfaces
+create_interfaces() {
+    print_status "Creating virtual network interfaces..."
+    
+    # Remove existing interfaces if they exist
+    ip link delete dmz0 2>/dev/null || true
+    ip link delete internal0 2>/dev/null || true
+    ip link delete mgmt0 2>/dev/null || true
+    
+    # Create DMZ interface
+    ip link add name dmz0 type dummy
+    ip addr add 192.168.10.1/24 dev dmz0
+    ip link set dmz0 up
+    
+    # Create Internal interface
+    ip link add name internal0 type dummy
+    ip addr add 192.168.20.1/24 dev internal0
+    ip link set internal0 up
+    
+    # Create Management interface
+    ip link add name mgmt0 type dummy
+    ip addr add 192.168.30.1/24 dev mgmt0
+    ip link set mgmt0 up
+    
+    print_status "Virtual interfaces created successfully"
+}
+
+# Function to enable IP forwarding
+enable_forwarding() {
+    print_status "Enabling IP forwarding..."
+    sysctl net.ipv4.ip_forward=1
+    
+    # Make permanent
+    if ! grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf; then
+        echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+    fi
+}
+
+# Function to configure iptables rules
+configure_iptables() {
+    print_status "Configuring iptables rules..."
+    
+    # Flush existing rules
+    iptables -F
+    iptables -X
+    iptables -t nat -F
+    iptables -t nat -X
+    
+    # Set default policies
+    iptables -P INPUT DROP
+    iptables -P FORWARD DROP
+    iptables -P OUTPUT ACCEPT
+    
+    # Define networks
+    DMZ_NET="192.168.10.0/24"
+    INTERNAL_NET="192.168.20.0/24"
+    MGMT_NET="192.168.30.0/24"
+    
+    # Allow loopback
+    iptables -A INPUT -i lo -j ACCEPT
+    
+    # Allow established connections
+    iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+    iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+    
+    # Allow SSH to this machine from management network
+    iptables -A INPUT -s $MGMT_NET -p tcp --dport 22 -j ACCEPT
+    
+    # DMZ access rules
+    iptables -A FORWARD -d $DMZ_NET -p tcp --dport 80 -j ACCEPT
+    iptables -A FORWARD -d $DMZ_NET -p tcp --dport 443 -j ACCEPT
+    iptables -A FORWARD -s $MGMT_NET -d $DMZ_NET -p tcp --dport 22 -j ACCEPT
+    
+    # Internal network rules
+    iptables -A FORWARD -s $INTERNAL_NET -d $DMZ_NET -p tcp -m multiport --dports 80,443 -j ACCEPT
+    iptables -A FORWARD -s $DMZ_NET -d $INTERNAL_NET -j DROP
+    
+    # Management network rules
+    iptables -A FORWARD -s $MGMT_NET -j ACCEPT
+    iptables -A FORWARD -d $MGMT_NET ! -s $MGMT_NET -j DROP
+    
+    # Logging
+    iptables -A INPUT -j LOG --log-prefix "INPUT_DROP: " --log-level 4
+    iptables -A FORWARD -j LOG --log-prefix "FORWARD_DROP: " --log-level 4
+    
+    print_status "iptables rules configured successfully"
+}
+
+# Function to create monitoring script
+create_monitoring() {
+    print_status "Creating network monitoring script..."
+    
+    cat > /usr/local/bin/network_monitor.sh << 'EOF'
+#!/bin/bash
+
+# Network Monitoring Script
+
+echo "=== Network Architecture Status ==="
+echo "Date: $(date)"
+echo
+
+echo "=== Virtual Interfaces ==="
+ip addr show | grep -E "(dmz0|internal0|mgmt0)" -A 2
+
+echo
+echo "=== iptables Rules Summary ==="
+echo "INPUT rules:"
+iptables -L INPUT -n --line-numbers | head -10
+
+echo
+echo "FORWARD rules:"
+iptables -L FORWARD -n --line-numbers | head -15
+
+echo
+echo "=== Recent Dropped Packets ==="
+tail -20 /var/log/kern.log | grep -E "(INPUT_DROP|FORWARD_DROP)" | tail -5
+
+echo
+echo "=== Network Connections ==="
+netstat -tuln | head -10
+EOF
+
+    chmod +x /usr/local/bin/network_monitor.sh
+    print_status "Monitoring script created at /usr/local/bin/network_monitor.sh"
+}
+
+# Function to create cleanup script
+create_cleanup() {
+    print_status "Creating cleanup script..."
+    
+    cat > /usr/local/bin/network_cleanup.sh << 'EOF'
+#!/bin/bash
+
+# Network Cleanup Script
+
+echo "Cleaning up network configuration..."
+
+# Remove virtual interfaces
+ip link delete dmz0 2>/dev/null || true
+ip link delete internal0 2>/dev/null || true
+ip link delete mgmt0 2>/dev/null || true
+
+# Flush iptables rules
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+
+# Reset default policies
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+echo "Network configuration cleaned up successfully"
+EOF
+
+    chmod +x /usr/local/bin/network_cleanup.sh
+    print_status "Cleanup script created at /usr/local/bin/network_cleanup.sh"
+}
+
+# Main execution
+main() {
+    print_status "Starting Automated Network Architecture Setup"
+    
+    check_root
+    backup_iptables
+    create_interfaces
+    enable_forwarding
+    configure_iptables
+    create_monitoring
+    create_cleanup
+    
+    print_status "Network architecture setup completed successfully!"
+    print_status "Use '/usr/local/bin/network_monitor.sh' to check status"
+    print_status "Use '/usr/local/bin/network_cleanup.sh' to remove configuration"
+}
+
+# Run main function
+main "$@"
+Make the script executable and run it:
+chmod +x ~/automated_network_setup.sh
+sudo ~/automated_network_setup.sh
+Subtask 3.2: Create Network Validation Script
+Create a script to validate that the network segmentation is working correctly.
+
+Create the validation script:
+nano ~/validate_network.sh
+Add the validation logic:
+#!/bin/bash
+
+# Network Validation Script
+# Tests network segmentation rules
+
+# Color codes
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+print_test() {
+    echo -e "${YELLOW}[TEST]${NC} $1"
+}
+
+print_pass() {
+    echo -e "${GREEN}[PASS]${NC} $1"
+}
+
+print_fail() {
+    echo -e "${RED}[FAIL]${NC} $1"
+}
+
+# Test 1: Check if virtual interfaces exist
+test_interfaces() {
+    print_test "Checking virtual network interfaces..."
+    
+    if ip addr show dmz0 &>/dev/null && ip addr show internal0 &>/dev/null && ip addr show mgmt0 &>/dev/null; then
+        print_pass "All virtual interfaces are present"
+        return 0
+    else
+        print_fail "Some virtual interfaces are missing"
+        return 1
+    fi
+}
+
+# Test 2: Check IP forwarding
+test_forwarding() {
+    print_test "Checking IP forwarding..."
+    
+    if [[ $(cat /proc/sys/net/ipv4/ip_forward) == "1" ]]; then
+        print_pass "IP forwarding is enabled"
+        return 0
+    else
+        print_fail "IP forwarding is disabled"
+        return 1
+    fi
+}
+
+# Test 3: Check iptables rules
+test_iptables() {
+    print_test "Checking iptables rules..."
+    
+    local rules_count=$(sudo iptables -L FORWARD -n | wc -l)
+    if [[ $rules_count -gt 5 ]]; then
+        print_pass "iptables rules are configured"
+        return 0
+    else
+        print_fail "iptables rules appear to be missing"
+        return 1
+    fi
+}
+
+# Test 4: Check for specific segmentation rules
+test_segmentation_rules() {
+    print_test "Checking network segmentation rules..."
+    
+    local dmz_rules=$(sudo iptables -L FORWARD -n | grep -c "192.168.10.0/24")
+    local internal_rules=$(sudo iptables -L FORWARD -n | grep -c "192.168.20.0/24")
+    local mgmt_rules=$(sudo iptables -L FORWARD -n | grep -c "192.168.30.0/24")
+    
+    if [[ $dmz_rules -gt 0 && $internal_rules -gt 0 && $mgmt_rules -gt 0 ]]; then
+        print_pass "Network segmentation rules are present"
+        return 0
+    else
+        print_fail "Network segmentation rules are incomplete"
+        return 1
+    fi
+}
+
+# Test 5: Check logging configuration
+test_logging() {
+    print_test "Checking logging configuration..."
+    
+    if sudo iptables -L -n | grep -q "LOG"; then
+        print_pass "Logging rules are configured"
+        return 0
+    else
+        print_fail "Logging rules are missing"
+        return 1
+    fi
+}
+
+# Main validation function
+main() {
+    echo "=== Network Architecture Validation ==="
+    echo "Date: $(date)"
+    echo
+    
+    local total_tests=0
+    local passed_tests=0
+    
+    # Run all tests
+    tests=(
+        "test_interfaces"
+        "test_forwarding"
+        "test_iptables"
+        "test_segmentation_rules"
+        "test_logging"
+    )
+    
+    for test in "${tests[@]}"; do
+        ((total_tests++))
+        if $test; then
+            ((passed_tests++))
+        fi
+        echo
+    done
+    
+    echo "=== Validation Summary ==="
+    echo "Tests passed: $passed_tests/$total_tests"
+    
+    if [[ $passed_tests -eq $total_tests ]]; then
+        print_pass "All tests passed! Network architecture is properly configured."
+        exit 0
+    else
+        print_fail "Some tests failed. Please review the configuration."
+        exit 1
+    fi
+}
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+    echo "This script requires sudo privileges for some tests"
+    echo "Run with: sudo $0"
+    exit 1
+fi
+
+main "$@"
+Make executable and run the validation:
+chmod +x ~/validate_network.sh
+sudo ~/validate_network.sh
+Subtask 3.3: Create Network Status Dashboard
+Create a simple dashboard script to monitor network status.
+
+Create the dashboard script:
+nano ~/network_dashboard.sh
+Add the dashboard code:
+#!/bin/bash
+
+# Network Security Dashboard
+
+# Function to display header
+show_header() {
+    clear
+    echo "=================================================="
+    echo "    SECURE NETWORK ARCHITECTURE DASHBOARD"
+    echo "=================================================="
+    echo "Last updated: $(date)"
+    echo
+}
+
+# Function to show interface status
+show_interfaces() {
+    echo "=== NETWORK INTERFACES ==="
+    printf "%-12s %-15s %-10s\n" "Interface" "IP Address" "Status"
+    echo "----------------------------------------"
+    
+    for iface in dmz0 internal0 mgmt0; do
+        if ip addr show $iface &>/dev/null; then
+            local ip=$(ip addr show $iface | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1)
+            local status=$(ip link show $iface | grep -o 'state [A-Z]*' | cut -d' ' -f2)
+            printf "%-12s %-15s %-10s\n" "$iface" "$ip" "$status"
+        else
+            printf "%-12s %-15s %-10s\n" "$iface" "N/A" "DOWN"
+        fi
+    done
+    echo
+}
+
+# Function to show firewall status
+show_firewall() {
+    echo "=== FIREWALL STATUS ==="
+    local input_rules=$(sudo iptables -L INPUT -n | grep -c "^ACCEPT\|^DROP\|^REJECT")
+    local forward_rules=$(sudo iptables -L FORWARD -n | grep -c "^ACCEPT\|^DROP\|^REJECT")
+    local output_rules=$(sudo iptables -L OUTPUT -n | grep -c "^ACCEPT\|^DROP\|^REJECT")
+    
+    echo "INPUT rules: $input_rules"
+    echo "FORWARD rules: $forward_rules"
+    echo "OUTPUT rules: $output_rules"
+    echo
+}
+
+# Function to show recent activity
+show_activity() {
+    echo "=== RECENT SECURITY EVENTS ==="
+    if [[ -f /var/log/kern.log ]]; then
+        sudo tail -10 /var/log/kern.log | grep -E "(DROP|REJECT)" | tail -5 | while read line; do
+            echo "$(echo $line | cut -d' ' -f1-3): $(echo $line | grep -o 'SRC=[0-9.]*' | cut -d'=' -f2) -> $(echo $line | grep -o 'DST=[0-9.]*' | cut -d'=' -f2)"
+        done
+    else
+        echo "No recent events found"
+    fi
+    echo
+}
+
+# Function to show network statistics
+show_statistics() {
+    echo "=== NETWORK STATISTICS ==="
+    echo "Active connections: $(netstat -an | grep ESTABLISHED | wc -l)"
+    echo "Listening services: $(netstat -tln | grep LISTEN | wc -l)"
+    echo "IP forwarding: $(cat /proc/sys/net/ipv4/ip_forward)"
+    echo
+}
+
+# Main dashboard function
+main() {
+    while true; do
+        show_header
+        show_interfaces
+        show_firewall
+        show_activity
+        show_statistics
+        
+        echo "Press Ctrl+C to exit, or wait 30 seconds for refresh..."
+        sleep 30
+    done
+}
+
+# Check for root privileges
+if [[ $EUID -ne 0 ]]; then
+    echo "This dashboard requires sudo privileges"
+    echo "Run with: sudo $0"
+    exit 1
+fi
+
+main
+Make executable and run:
+chmod +x ~/network_dashboard.sh
+sudo ~/network_dashboard.sh
+Troubleshooting Common Issues
+Issue 1: Virtual Interfaces Not Created
+Problem: Virtual network interfaces fail to create Solution:
+
+# Check if dummy module is loaded
+sudo modprobe dummy
+
+# Verify module is loaded
+lsmod | grep dummy
+
+# If still failing, try with different interface names
+sudo ip link add name test0 type dummy
+Issue 2: iptables Rules Not Applying
+Problem: iptables rules don't seem to work Solution:
+
+# Check if iptables service is running
+sudo systemctl status iptables
+
+# Verify rules are actually applied
+sudo iptables -L -v -n --line-numbers
+
+# Check for conflicting rules
+sudo iptables -S
+Issue 3: IP Forwarding Not Working
+Problem: Traffic not forwarding between interfaces Solution:
+
+# Verify IP forwarding is enabled
+cat /proc/sys/net/ipv4/ip_forward
+
+# Enable temporarily
+sudo sysctl net.ipv4.ip_forward=1
+
+# Check routing table
+ip route show
+Issue 4: Log Files Not Showing Traffic
+Problem: No log entries for dropped packets Solution:
+
+# Check if rsyslog is running
+sudo systemctl status rsyslog
+
+# Verify log configuration
+sudo grep -i kern /etc/rsyslog.conf
+
+# Check alternative log locations
+sudo tail -f /var/log/messages | grep iptables
+Verification and Testing
+Final Verification Steps
+Check all interfaces are up:
+ip addr show | grep -E "(dmz0|internal0|mgmt0)"
+Verify iptables rules:
+sudo iptables -L -v -n
+Test network monitoring:
+sudo /usr/local/bin/network_monitor.sh
+Run validation script:
+sudo ~/validate_network.sh
+Performance Testing
+Monitor system resources:
+top -p $(pgrep iptables)
+Check network performance:
+cat /proc/net/dev
+Conclusion
+In this lab, you have successfully:
+
+Designed and implemented network segmentation using iptables to create distinct network zones (DMZ, Internal, and Management)
+Created virtual network interfaces to simulate a multi-segment network architecture on a single machine
+Configured comprehensive firewall rules that control traffic flow between network segments according to security best practices
+Developed automated scripts for network configuration, monitoring, and validation
+Implemented logging and monitoring to track network security events and policy violations
+Built a management dashboard for real-time network status monitoring
+Why This Matters: Network segmentation is a fundamental security practice that limits the impact of security breaches by containing threats within specific network zones. The skills you've learned in this lab are directly applicable to:
+
+Enterprise network security where different departments and services need isolation
+Cloud infrastructure where workloads must be segmented for compliance and security
+Digital Defense scenarios where network architecture forms the first line of defense
+Compliance requirements such as PCI-DSS, HIPAA, and SOX that mandate network segmentation
+The automated scripts you've created demonstrate Infrastructure as Code principles, making network configurations repeatable, auditable, and maintainable. These skills are essential for modern cybersecurity professionals working with Digital Defense Core technologies and preparing for security certifications.
+
+Your network architecture now includes proper segmentation, automated management, and comprehensive monitoring - all critical components of a robust cybersecurity defense strategy.
