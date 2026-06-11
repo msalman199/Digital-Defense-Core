@@ -1,0 +1,533 @@
+ Implementing Zero Trust Access
+Objectives
+By the end of this lab, students will be able to:
+
+Understand and apply Zero Trust security principles in Linux environments
+Implement least privilege access controls using shell scripts
+Create and manage access policies based on Zero Trust architecture
+Monitor and audit access attempts for security compliance
+Validate Zero Trust implementations through practical testing
+Prerequisites
+Basic Linux command line proficiency
+Understanding of file permissions (chmod, chown)
+Fundamental shell scripting knowledge
+Basic cybersecurity concepts
+Access to a Linux terminal environment
+Lab Environment
+Al Nafi Cloud Environment: Click Start Lab to access your pre-configured Ubuntu 22.04 LTS machine with all necessary tools installed. No additional setup required.
+
+Included Tools:
+
+Standard Linux utilities
+Text editors (nano, vim)
+Bash shell environment
+Task 1: Understanding and Implementing Zero Trust Policies
+Step 1: Create Lab Directory Structure
+Set up the working environment:
+
+mkdir -p ~/zerotrust-lab/{policies,scripts,logs,resources}
+cd ~/zerotrust-lab
+Step 2: Create Zero Trust Policy Framework
+Create the policy definition file:
+
+nano policies/access_policy.conf
+Add policy definitions (students should customize):
+
+# Zero Trust Access Policy Configuration
+# Format: USERNAME:RESOURCE:PERMISSION:TIME_LIMIT:VERIFICATION_LEVEL
+# PERMISSIONS: r=read, w=write, x=execute
+# VERIFICATION_LEVELS: 1=low, 2=medium, 3=high
+
+admin:all:rwx:7200:3
+user:home:rw:3600:2
+guest:public:r:1800:1
+Step 3: Create Policy Management Script Template
+Create the policy management script:
+
+nano scripts/policy_manager.sh
+Starter Template (students must complete):
+
+#!/bin/bash
+
+# Zero Trust Policy Manager
+# Students: Complete the TODO sections
+
+LOG_FILE="$HOME/zerotrust-lab/logs/access_log.txt"
+POLICY_FILE="$HOME/zerotrust-lab/policies/access_policy.conf"
+
+# TODO: Implement logging function
+log_activity() {
+    # Add timestamp and message to log file
+    # Format: YYYY-MM-DD HH:MM:SS - MESSAGE
+}
+
+# TODO: Implement policy validation function
+validate_access() {
+    local username=$1
+    local resource=$2
+    local permission=$3
+    
+    # Read policy file
+    # Check if user exists in policy
+    # Validate resource access
+    # Check permission level
+    # Return 0 for granted, 1 for denied
+}
+
+# TODO: Implement add policy function
+add_policy() {
+    local username=$1
+    local resource=$2
+    local permission=$3
+    local time_limit=$4
+    local verification_level=$5
+    
+    # Validate input parameters
+    # Append to policy file
+    # Log the action
+}
+
+# TODO: Implement remove policy function
+remove_policy() {
+    local username=$1
+    
+    # Remove user entry from policy file
+    # Log the action
+}
+
+# TODO: Implement show policies function
+show_policies() {
+    # Display current policies from file
+    # Format output for readability
+}
+
+# Main execution
+case "$1" in
+    "validate")
+        validate_access "$2" "$3" "$4"
+        ;;
+    "add")
+        add_policy "$2" "$3" "$4" "$5" "$6"
+        ;;
+    "remove")
+        remove_policy "$2"
+        ;;
+    "show")
+        show_policies
+        ;;
+    *)
+        echo "Usage: $0 {validate|add|remove|show} [parameters]"
+        exit 1
+        ;;
+esac
+Make executable:
+
+chmod +x scripts/policy_manager.sh
+Step 4: Test Policy Management
+Test the script with sample commands:
+
+# Add test policies
+./scripts/policy_manager.sh add alice documents rw 3600 2
+./scripts/policy_manager.sh add bob reports r 1800 1
+
+# Show all policies
+./scripts/policy_manager.sh show
+
+# Validate access
+./scripts/policy_manager.sh validate alice documents r
+./scripts/policy_manager.sh validate bob documents w
+Task 2: Implementing Least Privilege Access Controls
+Step 1: Create Resource Directory Structure
+Set up directories with different security levels:
+
+mkdir -p ~/zerotrust-lab/resources/{public,private,restricted,shared}
+Step 2: Create Sample Resources
+Generate test files:
+
+echo "Public information" > ~/zerotrust-lab/resources/public/readme.txt
+echo "Private data" > ~/zerotrust-lab/resources/private/confidential.txt
+echo "Top secret" > ~/zerotrust-lab/resources/restricted/classified.txt
+echo "Team collaboration" > ~/zerotrust-lab/resources/shared/project.txt
+Step 3: Create Least Privilege Implementation Script
+Create the permission management script:
+
+nano scripts/least_privilege.sh
+Starter Template (students must complete):
+
+#!/bin/bash
+
+# Least Privilege Implementation Script
+# Students: Complete the TODO sections
+
+BASE_DIR="$HOME/zerotrust-lab/resources"
+LOG_FILE="$HOME/zerotrust-lab/logs/privilege_log.txt"
+
+# TODO: Implement permission application function
+apply_permissions() {
+    # Set public directory: 755 (rwxr-xr-x)
+    # Set public files: 644 (rw-r--r--)
+    
+    # Set private directory: 750 (rwxr-x---)
+    # Set private files: 640 (rw-r-----)
+    
+    # Set restricted directory: 700 (rwx------)
+    # Set restricted files: 600 (rw-------)
+    
+    # Set shared directory: 775 (rwxrwxr-x)
+    # Set shared files: 664 (rw-rw-r--)
+    
+    # Log all changes
+}
+
+# TODO: Implement permission verification function
+verify_permissions() {
+    # Check each directory and file
+    # Compare with expected permissions
+    # Report any discrepancies
+}
+
+# TODO: Implement access test function
+test_access() {
+    local file_path=$1
+    local operation=$2
+    
+    # Test read access with: test -r
+    # Test write access with: test -w
+    # Test execute access with: test -x
+    # Return appropriate status
+}
+
+# TODO: Implement permission report function
+generate_report() {
+    # List all resources with permissions
+    # Use: ls -la or stat command
+    # Format output clearly
+}
+
+# Main execution
+case "$1" in
+    "apply")
+        apply_permissions
+        ;;
+    "verify")
+        verify_permissions
+        ;;
+    "test")
+        test_access "$2" "$3"
+        ;;
+    "report")
+        generate_report
+        ;;
+    *)
+        echo "Usage: $0 {apply|verify|test|report} [parameters]"
+        exit 1
+        ;;
+esac
+Make executable:
+
+chmod +x scripts/least_privilege.sh
+Step 4: Apply and Verify Permissions
+Execute the permission setup:
+
+# Apply least privilege permissions
+./scripts/least_privilege.sh apply
+
+# Verify implementation
+./scripts/least_privilege.sh verify
+
+# Generate permission report
+./scripts/least_privilege.sh report
+Task 3: Creating Access Monitoring and Auditing
+Step 1: Create Access Monitor Script
+Create monitoring script:
+
+nano scripts/access_monitor.sh
+Starter Template (students must complete):
+
+#!/bin/bash
+
+# Access Monitoring Script
+# Students: Complete the TODO sections
+
+MONITOR_LOG="$HOME/zerotrust-lab/logs/monitor_log.txt"
+BASELINE_FILE="$HOME/zerotrust-lab/logs/baseline.txt"
+
+# TODO: Implement baseline creation function
+create_baseline() {
+    # Use find command to list all files
+    # Use stat to get permissions: stat -c "%n %a %U"
+    # Save to baseline file
+}
+
+# TODO: Implement change detection function
+detect_changes() {
+    # Create current state snapshot
+    # Compare with baseline using diff
+    # Log any differences
+    # Alert on unauthorized changes
+}
+
+# TODO: Implement access logging function
+log_access_attempt() {
+    local user=$1
+    local resource=$2
+    local action=$3
+    local result=$4
+    
+    # Format: timestamp - user - resource - action - result
+    # Append to monitor log
+}
+
+# TODO: Implement audit report function
+generate_audit_report() {
+    # Read monitor log
+    # Summarize access attempts
+    # Count granted vs denied
+    # List suspicious activities
+}
+
+# Main execution
+case "$1" in
+    "baseline")
+        create_baseline
+        ;;
+    "detect")
+        detect_changes
+        ;;
+    "log")
+        log_access_attempt "$2" "$3" "$4" "$5"
+        ;;
+    "audit")
+        generate_audit_report
+        ;;
+    *)
+        echo "Usage: $0 {baseline|detect|log|audit} [parameters]"
+        exit 1
+        ;;
+esac
+Make executable:
+
+chmod +x scripts/access_monitor.sh
+Step 2: Initialize Monitoring
+Set up baseline and test monitoring:
+
+# Create permission baseline
+./scripts/access_monitor.sh baseline
+
+# Test change detection
+./scripts/access_monitor.sh detect
+
+# Generate audit report
+./scripts/access_monitor.sh audit
+Task 4: Integration and Validation Testing
+Step 1: Create Integration Test Script
+Create comprehensive test script:
+
+nano scripts/integration_test.sh
+Starter Template (students must complete):
+
+#!/bin/bash
+
+# Zero Trust Integration Test
+# Students: Complete the TODO sections
+
+TEST_LOG="$HOME/zerotrust-lab/logs/test_results.txt"
+
+# TODO: Implement test initialization
+initialize_tests() {
+    # Clear previous test logs
+    # Set up test environment
+    # Create test users in policy
+}
+
+# TODO: Implement policy tests
+test_policies() {
+    # Test 1: Valid user access
+    # Test 2: Invalid user access
+    # Test 3: Insufficient permissions
+    # Test 4: Resource not authorized
+    # Log all results
+}
+
+# TODO: Implement permission tests
+test_permissions() {
+    # Test public directory access
+    # Test private directory access
+    # Test restricted directory access
+    # Verify least privilege enforcement
+}
+
+# TODO: Implement monitoring tests
+test_monitoring() {
+    # Modify a file permission
+    # Run change detection
+    # Verify alert generation
+    # Restore original permissions
+}
+
+# TODO: Implement results summary
+summarize_results() {
+    # Count passed tests
+    # Count failed tests
+    # Display summary report
+    # Provide recommendations
+}
+
+# Main execution
+case "$1" in
+    "init")
+        initialize_tests
+        ;;
+    "policies")
+        test_policies
+        ;;
+    "permissions")
+        test_permissions
+        ;;
+    "monitoring")
+        test_monitoring
+        ;;
+    "summary")
+        summarize_results
+        ;;
+    "all")
+        initialize_tests
+        test_policies
+        test_permissions
+        test_monitoring
+        summarize_results
+        ;;
+    *)
+        echo "Usage: $0 {init|policies|permissions|monitoring|summary|all}"
+        exit 1
+        ;;
+esac
+Make executable:
+
+chmod +x scripts/integration_test.sh
+Step 2: Run Complete Test Suite
+Execute all tests:
+
+# Run complete test suite
+./scripts/integration_test.sh all
+
+# View test results
+cat ~/zerotrust-lab/logs/test_results.txt
+Step 3: Create Security Compliance Report
+Generate final compliance report:
+
+nano scripts/compliance_report.sh
+Starter Template (students must complete):
+
+#!/bin/bash
+
+# Security Compliance Report Generator
+# Students: Complete the TODO sections
+
+REPORT_FILE="$HOME/zerotrust-lab/logs/compliance_report.txt"
+
+# TODO: Implement report header
+create_report_header() {
+    # Add title and timestamp
+    # Add system information
+}
+
+# TODO: Implement policy compliance check
+check_policy_compliance() {
+    # Verify all policies are documented
+    # Check for default deny rules
+    # Validate verification levels
+}
+
+# TODO: Implement permission compliance check
+check_permission_compliance() {
+    # Verify least privilege implementation
+    # Check for overly permissive settings
+    # Identify security risks
+}
+
+# TODO: Implement audit compliance check
+check_audit_compliance() {
+    # Verify logging is enabled
+    # Check log retention
+    # Validate monitoring coverage
+}
+
+# TODO: Implement recommendations
+generate_recommendations() {
+    # List security improvements
+    # Prioritize by risk level
+    # Provide remediation steps
+}
+
+# Main execution
+create_report_header
+check_policy_compliance
+check_permission_compliance
+check_audit_compliance
+generate_recommendations
+
+echo "Compliance report generated: $REPORT_FILE"
+Make executable and run:
+
+chmod +x scripts/compliance_report.sh
+./scripts/compliance_report.sh
+cat ~/zerotrust-lab/logs/compliance_report.txt
+Expected Outcomes
+Upon completing this lab, students should have:
+
+Functional Zero Trust policy management system with user access controls
+Least privilege file system with appropriate permission levels
+Access monitoring and auditing capabilities for security compliance
+Integration test suite validating Zero Trust implementation
+Compliance report documenting security posture
+Key Deliverables:
+
+Policy configuration file with multiple user entries
+Four working shell scripts (policy manager, least privilege, monitor, integration test)
+Log files showing access attempts and changes
+Compliance report with security recommendations
+Troubleshooting Tips
+Issue 1: Permission Denied Errors
+
+Verify script has execute permissions: chmod +x script.sh
+Check file ownership: ls -l filename
+Ensure you're in correct directory: pwd
+Issue 2: Policy Not Applied
+
+Verify policy file format matches specification
+Check for syntax errors in configuration
+Ensure no trailing spaces in policy entries
+Issue 3: Monitoring Not Detecting Changes
+
+Recreate baseline: ./scripts/access_monitor.sh baseline
+Verify baseline file exists: ls -l ~/zerotrust-lab/logs/baseline.txt
+Check file paths are absolute, not relative
+Issue 4: Scripts Not Finding Files
+
+Use absolute paths: $HOME/zerotrust-lab/...
+Verify directory structure: tree ~/zerotrust-lab
+Check environment variables: echo $HOME
+Conclusion
+This lab provided hands-on experience implementing Zero Trust security principles in a Linux environment. Students created policy management systems, applied least privilege access controls, and developed monitoring capabilities. These skills are fundamental to modern cybersecurity practices.
+
+Key Takeaways:
+
+Zero Trust requires explicit verification for every access request
+Least privilege minimizes potential security impact
+Continuous monitoring detects unauthorized changes
+Automation ensures consistent policy enforcement
+Next Steps:
+
+Extend policies to include time-based access controls
+Implement multi-factor authentication simulation
+Create automated remediation for policy violations
+Integrate with system logging (syslog)
+Security Best Practices Learned:
+
+Never trust, always verify
+Grant minimum necessary permissions
+Log and audit all access attempts
+Regularly review and update policies
+Automate security enforcement
+Students should retain their scripts and configurations for future reference and portfolio development.
