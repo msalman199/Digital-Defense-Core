@@ -1,0 +1,509 @@
+Cryptography with Python
+Objectives
+By the end of this lab, students will be able to:
+
+Implement symmetric encryption using AES (Advanced Encryption Standard)
+Create asymmetric encryption using RSA (Rivest-Shamir-Adleman)
+Compare performance and use cases of symmetric vs asymmetric encryption
+Apply cryptographic principles to secure data transmission
+Understand hybrid encryption combining RSA and AES
+Prerequisites
+Basic Python programming (functions, classes, file I/O)
+Linux command line familiarity
+Understanding of encryption/decryption concepts
+Access to a terminal environment
+Lab Environment
+Al Nafi provides ready-to-use Linux-based cloud machines for this lab. Click Start Lab to access your pre-configured environment with Python 3 and necessary tools already installed.
+
+Task 1: Implementing AES Symmetric Encryption
+Step 1: Environment Setup
+Install the required cryptography library:
+
+sudo apt update
+sudo apt install python3-pip -y
+pip3 install cryptography
+Verify installation:
+
+python3 -c "from cryptography.fernet import Fernet; print('Ready')"
+Step 2: Create AES Encryption Module
+Create a working directory and script:
+
+mkdir ~/crypto_lab && cd ~/crypto_lab
+nano aes_crypto.py
+Enter the following starter code:
+
+#!/usr/bin/env python3
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import base64
+import os
+
+class AESCrypto:
+    """AES encryption/decryption handler using Fernet"""
+    
+    def __init__(self):
+        self.key = None
+        self.cipher = None
+    
+    def generate_key(self):
+        """
+        Generate a new random encryption key.
+        Store it in self.key and initialize self.cipher.
+        """
+        # TODO: Generate key using Fernet.generate_key()
+        # TODO: Create cipher suite with Fernet(self.key)
+        # TODO: Return the key
+        pass
+    
+    def generate_key_from_password(self, password: str, salt: bytes = None):
+        """
+        Derive encryption key from password using PBKDF2.
+        
+        Args:
+            password: User password string
+            salt: Optional salt bytes (generate if None)
+        
+        Returns:
+            Tuple of (key, salt)
+        """
+        # TODO: Generate salt if None (os.urandom(16))
+        # TODO: Create PBKDF2HMAC with SHA256, 100000 iterations
+        # TODO: Derive key and encode with base64.urlsafe_b64encode
+        # TODO: Initialize self.cipher with derived key
+        # TODO: Return (key, salt)
+        pass
+    
+    def encrypt(self, plaintext: str) -> bytes:
+        """
+        Encrypt plaintext message.
+        
+        Args:
+            plaintext: Message to encrypt
+        
+        Returns:
+            Encrypted bytes
+        """
+        # TODO: Check if cipher is initialized
+        # TODO: Encode plaintext to bytes
+        # TODO: Encrypt using self.cipher.encrypt()
+        # TODO: Return encrypted bytes
+        pass
+    
+    def decrypt(self, ciphertext: bytes) -> str:
+        """
+        Decrypt encrypted message.
+        
+        Args:
+            ciphertext: Encrypted bytes
+        
+        Returns:
+            Decrypted plaintext string
+        """
+        # TODO: Check if cipher is initialized
+        # TODO: Decrypt using self.cipher.decrypt()
+        # TODO: Decode bytes to string
+        # TODO: Return plaintext
+        pass
+    
+    def save_key(self, filename: str):
+        """Save encryption key to file"""
+        # TODO: Write self.key to file in binary mode
+        pass
+    
+    def load_key(self, filename: str):
+        """Load encryption key from file"""
+        # TODO: Read key from file in binary mode
+        # TODO: Initialize self.cipher with loaded key
+        pass
+
+def main():
+    """Test AES encryption functionality"""
+    print("=== AES Encryption Demo ===\n")
+    
+    # TODO: Create AESCrypto instance
+    # TODO: Generate random key
+    # TODO: Encrypt a test message
+    # TODO: Decrypt the message
+    # TODO: Verify original matches decrypted
+    
+    # TODO: Test password-based encryption
+    # TODO: Save and load key from file
+    
+    print("\n=== Demo Complete ===")
+
+if __name__ == "__main__":
+    main()
+Save and make executable:
+
+chmod +x aes_crypto.py
+Step 3: Implement and Test
+Complete the TODO sections in the code, then run:
+
+python3 aes_crypto.py
+Expected behavior:
+
+Key generation succeeds
+Message encrypts to unreadable ciphertext
+Decryption recovers original message
+Password-based key derivation works
+Key save/load functionality operates correctly
+Task 2: Implementing RSA Asymmetric Encryption
+Step 1: Create RSA Module
+Create a new script:
+
+nano rsa_crypto.py
+Enter the starter code:
+
+#!/usr/bin/env python3
+
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.backends import default_backend
+
+class RSACrypto:
+    """RSA encryption/decryption and digital signatures"""
+    
+    def __init__(self):
+        self.private_key = None
+        self.public_key = None
+    
+    def generate_keypair(self, key_size: int = 2048):
+        """
+        Generate RSA public/private key pair.
+        
+        Args:
+            key_size: Key size in bits (2048 or 4096)
+        """
+        # TODO: Generate private key using rsa.generate_private_key()
+        # TODO: Extract public key from private key
+        # TODO: Store both in instance variables
+        pass
+    
+    def save_keys(self, private_file: str = "private.pem", 
+                   public_file: str = "public.pem"):
+        """Save keys to PEM files"""
+        # TODO: Serialize private key to PEM format (no encryption)
+        # TODO: Write private key to file
+        # TODO: Serialize public key to PEM format
+        # TODO: Write public key to file
+        pass
+    
+    def load_keys(self, private_file: str = "private.pem",
+                   public_file: str = "public.pem"):
+        """Load keys from PEM files"""
+        # TODO: Read and deserialize private key
+        # TODO: Read and deserialize public key
+        pass
+    
+    def encrypt(self, plaintext: str) -> bytes:
+        """
+        Encrypt message with public key.
+        Note: RSA can only encrypt small messages (~190 bytes for 2048-bit key)
+        
+        Args:
+            plaintext: Message to encrypt (must be short)
+        
+        Returns:
+            Encrypted bytes
+        """
+        # TODO: Check message length (max ~190 bytes)
+        # TODO: Encrypt using public_key.encrypt() with OAEP padding
+        # TODO: Use SHA256 for MGF1 and algorithm
+        # TODO: Return encrypted bytes
+        pass
+    
+    def decrypt(self, ciphertext: bytes) -> str:
+        """
+        Decrypt message with private key.
+        
+        Args:
+            ciphertext: Encrypted bytes
+        
+        Returns:
+            Decrypted plaintext
+        """
+        # TODO: Decrypt using private_key.decrypt() with OAEP padding
+        # TODO: Decode bytes to string
+        # TODO: Return plaintext
+        pass
+    
+    def sign(self, message: str) -> bytes:
+        """
+        Create digital signature for message.
+        
+        Args:
+            message: Message to sign
+        
+        Returns:
+            Signature bytes
+        """
+        # TODO: Sign message using private_key.sign()
+        # TODO: Use PSS padding with SHA256
+        # TODO: Return signature
+        pass
+    
+    def verify(self, message: str, signature: bytes) -> bool:
+        """
+        Verify digital signature.
+        
+        Args:
+            message: Original message
+            signature: Signature to verify
+        
+        Returns:
+            True if valid, False otherwise
+        """
+        # TODO: Verify using public_key.verify()
+        # TODO: Use PSS padding with SHA256
+        # TODO: Return True if valid, catch exception and return False
+        pass
+
+def main():
+    """Test RSA encryption and signatures"""
+    print("=== RSA Encryption Demo ===\n")
+    
+    # TODO: Create RSACrypto instance
+    # TODO: Generate key pair
+    # TODO: Save keys to files
+    
+    # TODO: Test encryption/decryption with short message
+    # TODO: Verify decrypted matches original
+    
+    # TODO: Test digital signature creation
+    # TODO: Verify signature is valid
+    # TODO: Test with tampered message (should fail)
+    
+    # TODO: Test loading keys from files
+    
+    print("\n=== Demo Complete ===")
+
+if __name__ == "__main__":
+    main()
+Step 2: Implement and Test
+Complete the RSA implementation and run:
+
+chmod +x rsa_crypto.py
+python3 rsa_crypto.py
+Expected behavior:
+
+Key pair generation succeeds (2048-bit)
+Short messages encrypt/decrypt correctly
+Digital signatures verify successfully
+Tampered messages fail verification
+Keys save/load properly
+Task 3: Comparing Encryption Methods
+Step 1: Create Comparison Script
+nano crypto_compare.py
+Enter the comparison framework:
+
+#!/usr/bin/env python3
+
+import time
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+
+def benchmark_aes():
+    """
+    Benchmark AES encryption/decryption speed.
+    Test with a large message (1000+ characters).
+    
+    Returns:
+        Tuple of (encrypt_time, decrypt_time, encrypted_size)
+    """
+    # TODO: Generate AES key
+    # TODO: Create test message (large)
+    # TODO: Time encryption operation
+    # TODO: Time decryption operation
+    # TODO: Return timing results and size
+    pass
+
+def benchmark_rsa():
+    """
+    Benchmark RSA encryption/decryption speed.
+    Test with a small message (<190 bytes).
+    
+    Returns:
+        Tuple of (encrypt_time, decrypt_time, encrypted_size)
+    """
+    # TODO: Generate RSA key pair
+    # TODO: Create test message (small)
+    # TODO: Time encryption operation
+    # TODO: Time decryption operation
+    # TODO: Return timing results and size
+    pass
+
+def compare_methods():
+    """Run comparison and display results"""
+    print("=== Encryption Method Comparison ===\n")
+    
+    # TODO: Run AES benchmark
+    # TODO: Run RSA benchmark
+    # TODO: Display timing comparisons
+    # TODO: Display size comparisons
+    # TODO: Print use case recommendations
+    pass
+
+if __name__ == "__main__":
+    compare_methods()
+Step 2: Run Comparison
+chmod +x crypto_compare.py
+python3 crypto_compare.py
+Analysis questions:
+
+Which method is faster for large data?
+Which produces smaller ciphertext?
+What are the message size limitations?
+When should you use each method?
+Task 4: Hybrid Encryption Implementation
+Step 1: Create Hybrid System
+nano hybrid_crypto.py
+Implement hybrid encryption combining RSA and AES:
+
+#!/usr/bin/env python3
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+
+def hybrid_encrypt(message: str, rsa_public_key):
+    """
+    Encrypt large message using hybrid cryptography.
+    
+    Process:
+    1. Generate random AES key
+    2. Encrypt message with AES key
+    3. Encrypt AES key with RSA public key
+    4. Return both encrypted components
+    
+    Args:
+        message: Large plaintext message
+        rsa_public_key: RSA public key object
+    
+    Returns:
+        Tuple of (encrypted_aes_key, encrypted_message)
+    """
+    # TODO: Generate random AES key
+    # TODO: Encrypt message with AES
+    # TODO: Encrypt AES key with RSA public key
+    # TODO: Return both encrypted components
+    pass
+
+def hybrid_decrypt(encrypted_aes_key: bytes, encrypted_message: bytes,
+                   rsa_private_key) -> str:
+    """
+    Decrypt message encrypted with hybrid cryptography.
+    
+    Process:
+    1. Decrypt AES key using RSA private key
+    2. Decrypt message using recovered AES key
+    3. Return plaintext
+    
+    Args:
+        encrypted_aes_key: RSA-encrypted AES key
+        encrypted_message: AES-encrypted message
+        rsa_private_key: RSA private key object
+    
+    Returns:
+        Decrypted plaintext message
+    """
+    # TODO: Decrypt AES key with RSA private key
+    # TODO: Create Fernet cipher with recovered key
+    # TODO: Decrypt message with AES
+    # TODO: Return plaintext
+    pass
+
+def main():
+    """Test hybrid encryption system"""
+    print("=== Hybrid Encryption Demo ===\n")
+    
+    # TODO: Generate RSA key pair
+    # TODO: Create large test message (1000+ chars)
+    # TODO: Encrypt using hybrid_encrypt()
+    # TODO: Decrypt using hybrid_decrypt()
+    # TODO: Verify original matches decrypted
+    # TODO: Display advantages of hybrid approach
+    
+    print("\n=== Demo Complete ===")
+
+if __name__ == "__main__":
+    main()
+Step 2: Test Hybrid System
+chmod +x hybrid_crypto.py
+python3 hybrid_crypto.py
+Key concepts:
+
+RSA encrypts only the small AES key
+AES encrypts the large message
+Combines speed of AES with security of RSA
+Standard approach for secure communications (TLS/SSL)
+Expected Outcomes
+Upon completing this lab, you should have:
+
+Working AES implementation that can:
+
+Generate random keys
+Derive keys from passwords
+Encrypt/decrypt messages of any size
+Save/load keys from files
+Working RSA implementation that can:
+
+Generate public/private key pairs
+Encrypt/decrypt small messages
+Create and verify digital signatures
+Detect message tampering
+Performance understanding:
+
+AES is 100-1000x faster than RSA
+RSA has strict message size limits
+AES produces smaller ciphertext
+Each has distinct use cases
+Hybrid encryption system:
+
+Combines benefits of both methods
+Enables secure large message encryption
+Demonstrates real-world cryptography
+Troubleshooting Tips
+Import Errors
+If cryptography modules fail to import:
+
+pip3 install --upgrade cryptography
+python3 -m pip install cryptography --user
+Message Too Large for RSA
+RSA encryption fails with large messages. Solutions:
+
+Keep RSA messages under 190 bytes (2048-bit key)
+Use hybrid encryption for large data
+Split into chunks (not recommended)
+Key File Permissions
+If key files have permission issues:
+
+chmod 600 *.pem *.key
+ls -la *.pem *.key
+Decryption Failures
+Common causes:
+
+Using wrong key for decryption
+Corrupted ciphertext
+Mismatched encryption/decryption methods
+Key not initialized before use
+Conclusion
+This lab demonstrated fundamental cryptographic techniques using Python. You implemented symmetric encryption (AES) for fast bulk data encryption, asymmetric encryption (RSA) for secure key exchange and digital signatures, and hybrid encryption combining both approaches.
+
+Key takeaways:
+
+Symmetric (AES): Fast, efficient, requires secure key distribution
+Asymmetric (RSA): Slower, enables secure key exchange, supports signatures
+Hybrid: Industry standard combining both methods
+Real-world: TLS/SSL, PGP, and secure messaging use these techniques
+Next steps:
+
+Explore certificate authorities and PKI
+Study hash functions and message authentication codes
+Investigate elliptic curve cryptography (ECC)
+Learn about key management best practices
+Remember: Never implement your own cryptographic algorithms in production. Always use well-tested libraries like the ones in this lab.
