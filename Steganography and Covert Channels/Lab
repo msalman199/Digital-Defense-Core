@@ -1,0 +1,450 @@
+Steganography and Covert Channels
+Objectives
+By the end of this lab, students will be able to:
+
+Understand fundamental concepts of steganography and LSB (Least Significant Bit) encoding
+Implement basic image-based steganography techniques using Python
+Hide and extract text messages within digital images
+Analyze images for potential steganographic content
+Recognize security implications and detection methods for steganography
+Prerequisites
+Before starting this lab, students should have:
+
+Basic Python programming skills (functions, file I/O, loops)
+Understanding of binary number systems and bitwise operations
+Familiarity with Linux command line operations
+Lab Environment
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment with Python 3, pip, and necessary libraries pre-installed.
+
+Task 1: Understanding LSB Steganography
+Step 1: Set Up Working Directory
+Create your lab workspace and install required libraries:
+
+mkdir ~/steganography_lab
+cd ~/steganography_lab
+
+# Install required Python libraries
+pip3 install Pillow numpy matplotlib --user
+Step 2: Create Test Images
+Generate sample images for testing:
+
+python3 << 'EOF'
+from PIL import Image
+import numpy as np
+
+# Create a random test image
+width, height = 400, 300
+image_array = np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
+test_image = Image.fromarray(image_array, 'RGB')
+test_image.save('test_image.png')
+
+# Create a solid color image
+solid_image = Image.new('RGB', (400, 300), color='blue')
+solid_image.save('blue_image.png')
+
+print("Test images created successfully!")
+EOF
+Step 3: Understand Binary Representation
+Create a script to visualize how LSB steganography works:
+
+# Create understanding_lsb.py
+cat > understanding_lsb.py << 'EOF'
+#!/usr/bin/env python3
+
+def demonstrate_lsb():
+    """Demonstrate LSB modification concept"""
+    
+    # Original pixel value
+    original_pixel = 170  # Binary: 10101010
+    print(f"Original pixel: {original_pixel} = {format(original_pixel, '08b')}")
+    
+    # Message bit to hide
+    message_bit = 1
+    print(f"Message bit to hide: {message_bit}")
+    
+    # Modify LSB: Clear LSB and set to message bit
+    modified_pixel = (original_pixel & 0xFE) | message_bit
+    print(f"Modified pixel: {modified_pixel} = {format(modified_pixel, '08b')}")
+    print(f"Difference: {abs(original_pixel - modified_pixel)} (imperceptible!)")
+    
+    # Extract the hidden bit
+    extracted_bit = modified_pixel & 1
+    print(f"Extracted bit: {extracted_bit}")
+    print(f"Match: {extracted_bit == message_bit}")
+
+if __name__ == "__main__":
+    demonstrate_lsb()
+EOF
+
+python3 understanding_lsb.py
+Task 2: Implement Basic Steganography
+Step 1: Create Steganography Encoder/Decoder
+Create a basic steganography tool with starter code:
+
+# Create steganography_tool.py
+cat > steganography_tool.py << 'EOF'
+#!/usr/bin/env python3
+
+from PIL import Image
+import numpy as np
+import sys
+
+class ImageSteganography:
+    def __init__(self):
+        self.delimiter = "###END###"
+    
+    def text_to_binary(self, text):
+        """
+        Convert text string to binary representation.
+        
+        Args:
+            text: String to convert
+        
+        Returns:
+            Binary string representation
+        """
+        # TODO: Convert each character to 8-bit binary
+        # Hint: Use ord() and format()
+        pass
+    
+    def binary_to_text(self, binary_data):
+        """
+        Convert binary string back to text.
+        
+        Args:
+            binary_data: Binary string
+        
+        Returns:
+            Decoded text string
+        """
+        # TODO: Process binary data in 8-bit chunks
+        # TODO: Convert each byte to character using chr()
+        pass
+    
+    def hide_message(self, image_path, message, output_path):
+        """
+        Hide a text message in an image using LSB steganography.
+        
+        Args:
+            image_path: Path to cover image
+            message: Text message to hide
+            output_path: Path for output image
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # TODO: Open image and convert to RGB
+            # TODO: Convert image to numpy array
+            # TODO: Prepare message with delimiter
+            # TODO: Convert message to binary
+            # TODO: Check if image can hold the message
+            # TODO: Flatten image array
+            # TODO: Modify LSB of each pixel with message bits
+            # TODO: Reshape and save modified image
+            
+            print(f"Message successfully hidden in {output_path}")
+            return True
+            
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return False
+    
+    def extract_message(self, image_path):
+        """
+        Extract hidden message from steganographic image.
+        
+        Args:
+            image_path: Path to steganographic image
+        
+        Returns:
+            Extracted message or None
+        """
+        try:
+            # TODO: Open image and convert to RGB
+            # TODO: Convert to numpy array and flatten
+            # TODO: Extract LSB from each pixel value
+            # TODO: Convert binary data to text
+            # TODO: Find delimiter and extract message
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return None
+
+def main():
+    stego = ImageSteganography()
+    
+    if len(sys.argv) < 2:
+        print("Usage:")
+        print("  Hide: python3 steganography_tool.py hide <image> <message> <output>")
+        print("  Extract: python3 steganography_tool.py extract <image>")
+        return
+    
+    command = sys.argv[1].lower()
+    
+    if command == "hide" and len(sys.argv) == 5:
+        stego.hide_message(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif command == "extract" and len(sys.argv) == 3:
+        stego.extract_message(sys.argv[2])
+    else:
+        print("Invalid command or arguments!")
+
+if __name__ == "__main__":
+    main()
+EOF
+
+chmod +x steganography_tool.py
+Step 2: Test Your Implementation
+After implementing the TODO sections, test your tool:
+
+# Hide a message
+python3 steganography_tool.py hide test_image.png "Secret message!" hidden.png
+
+# Extract the message
+python3 steganography_tool.py extract hidden.png
+Step 3: Add Image Comparison
+Extend your tool to compare original and modified images:
+
+# Add this method to ImageSteganography class
+def compare_images(self, original_path, modified_path):
+    """
+    Compare original and steganographic images.
+    
+    Args:
+        original_path: Path to original image
+        modified_path: Path to modified image
+    """
+    # TODO: Load both images
+    # TODO: Convert to numpy arrays
+    # TODO: Calculate pixel differences
+    # TODO: Compute statistics (max diff, average diff, count)
+    # TODO: Display comparison results
+    pass
+Task 3: Advanced Steganography Features
+Step 1: Implement Capacity Calculation
+Create a function to calculate image capacity:
+
+# Create capacity_checker.py
+cat > capacity_checker.py << 'EOF'
+#!/usr/bin/env python3
+
+from PIL import Image
+import sys
+
+def calculate_capacity(image_path):
+    """
+    Calculate maximum message capacity of an image.
+    
+    Args:
+        image_path: Path to image file
+    
+    Returns:
+        Maximum characters that can be hidden
+    """
+    # TODO: Open image and get dimensions
+    # TODO: Calculate total bits available (width * height * 3)
+    # TODO: Account for delimiter overhead
+    # TODO: Convert bits to character capacity
+    # TODO: Display results
+    pass
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 capacity_checker.py <image_path>")
+    else:
+        calculate_capacity(sys.argv[1])
+EOF
+
+chmod +x capacity_checker.py
+Step 2: Add Password Protection
+Implement simple XOR encryption for messages:
+
+# Add to steganography_tool.py
+import hashlib
+import base64
+
+def encrypt_message(self, message, password):
+    """
+    Encrypt message using XOR cipher with password.
+    
+    Args:
+        message: Plain text message
+        password: Encryption password
+    
+    Returns:
+        Encrypted message (base64 encoded)
+    """
+    # TODO: Generate key from password using MD5 hash
+    # TODO: XOR each character with key
+    # TODO: Encode result in base64
+    pass
+
+def decrypt_message(self, encrypted_message, password):
+    """
+    Decrypt XOR encrypted message.
+    
+    Args:
+        encrypted_message: Encrypted message (base64)
+        password: Decryption password
+    
+    Returns:
+        Decrypted plain text
+    """
+    # TODO: Decode base64
+    # TODO: Generate same key from password
+    # TODO: XOR to decrypt
+    pass
+Step 3: Test Advanced Features
+# Check capacity
+python3 capacity_checker.py test_image.png
+
+# Hide with password (after implementing encryption)
+python3 steganography_tool.py hide test_image.png "Secret!" secure.png mypass123
+
+# Extract with password
+python3 steganography_tool.py extract secure.png mypass123
+Task 4: Steganography Detection
+Step 1: Implement Chi-Square Test
+Create a detection tool using statistical analysis:
+
+# Create stego_detector.py
+cat > stego_detector.py << 'EOF'
+#!/usr/bin/env python3
+
+from PIL import Image
+import numpy as np
+import sys
+
+class SteganographyDetector:
+    
+    def chi_square_test(self, image_path):
+        """
+        Perform chi-square test on LSB distribution.
+        
+        Args:
+            image_path: Path to image to analyze
+        
+        Returns:
+            Chi-square value
+        """
+        # TODO: Load image and extract LSBs
+        # TODO: Count 0s and 1s in LSBs
+        # TODO: Calculate expected frequency (50/50)
+        # TODO: Compute chi-square statistic
+        # TODO: Compare to critical value (3.841 for 95% confidence)
+        # TODO: Report if suspicious
+        pass
+    
+    def entropy_analysis(self, image_path):
+        """
+        Calculate entropy of LSB layer.
+        
+        Args:
+            image_path: Path to image
+        """
+        # TODO: Extract LSBs from image
+        # TODO: Calculate Shannon entropy
+        # TODO: High entropy (>0.9) suggests hidden data
+        pass
+    
+    def visual_analysis(self, image_path, output_path):
+        """
+        Create visual representation of LSB layer.
+        
+        Args:
+            image_path: Input image
+            output_path: Output visualization
+        """
+        # TODO: Extract LSB from each color channel
+        # TODO: Multiply by 255 to make visible
+        # TODO: Save as new image
+        # TODO: Patterns indicate hidden data
+        pass
+
+def main():
+    detector = SteganographyDetector()
+    
+    if len(sys.argv) != 2:
+        print("Usage: python3 stego_detector.py <image_path>")
+        return
+    
+    print("=== Steganography Detection Analysis ===")
+    detector.chi_square_test(sys.argv[1])
+    detector.entropy_analysis(sys.argv[1])
+    detector.visual_analysis(sys.argv[1], "lsb_visualization.png")
+
+if __name__ == "__main__":
+    main()
+EOF
+
+chmod +x stego_detector.py
+Step 2: Test Detection Tool
+# Analyze clean image
+python3 stego_detector.py test_image.png
+
+# Analyze steganographic image
+python3 stego_detector.py hidden.png
+
+# Compare results
+Step 3: Create Batch Analysis Tool
+# Create batch_analyzer.py
+cat > batch_analyzer.py << 'EOF'
+#!/usr/bin/env python3
+
+import os
+import sys
+
+def analyze_directory(directory_path):
+    """
+    Analyze all images in a directory for steganographic content.
+    
+    Args:
+        directory_path: Path to directory containing images
+    """
+    # TODO: List all image files in directory
+    # TODO: For each image, run quick analysis
+    # TODO: Calculate LSB ratio, chi-square, entropy
+    # TODO: Assign suspicion score (0-3)
+    # TODO: Generate summary report
+    pass
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 batch_analyzer.py <directory>")
+    else:
+        analyze_directory(sys.argv[1])
+EOF
+Expected Outcomes
+After completing this lab, you should have:
+
+Working steganography encoder/decoder using LSB method
+Understanding of how data is hidden in image pixels
+Ability to calculate image capacity for hidden messages
+Implementation of password-protected steganography
+Detection tools using statistical analysis
+Knowledge of steganography limitations and vulnerabilities
+Troubleshooting Tips
+Issue: "Message too long for image"
+
+Solution: Use capacity checker to verify image can hold message. Use larger image or shorter message.
+Issue: "Extracted message is garbled"
+
+Solution: Ensure delimiter is properly implemented. Check that extraction reads same number of bits as were written.
+Issue: "Password decryption fails"
+
+Solution: Verify password is identical for encryption and decryption. Check base64 encoding/decoding is correct.
+Issue: "PIL/Pillow import errors"
+
+Solution: Reinstall with pip3 install --upgrade Pillow --user
+Issue: "Detection tool shows false positives"
+
+Solution: Natural images may have unusual LSB distributions. Use multiple detection methods for confirmation.
+Conclusion
+This lab introduced steganography concepts and practical implementation using LSB encoding in images. You learned to hide and extract messages, implement security features like encryption, and detect steganographic content using statistical analysis. Steganography is used for covert communication but can be detected through careful analysis. Understanding both creation and detection of steganographic content is essential for cybersecurity professionals.
+
+Key takeaways:
+
+LSB steganography modifies least significant bits of pixel values
+Changes are imperceptible to human eye but detectable statistically
