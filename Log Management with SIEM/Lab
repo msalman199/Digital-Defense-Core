@@ -1,0 +1,558 @@
+Log Management with SIEM Tools
+Lab Objectives
+By the end of this lab, students will be able to:
+
+Install and configure the ELK Stack (Elasticsearch, Logstash, Kibana) for centralized log management
+Implement log parsing and normalization using Logstash filters
+Create custom scripts for log analysis and threat detection
+Configure log retention policies and rotation strategies
+Build basic visualizations for security monitoring
+Prerequisites
+Basic Linux command line proficiency
+Understanding of system logs and their security importance
+Familiarity with text editors (nano, vim)
+Basic scripting knowledge (bash)
+Understanding of networking fundamentals
+Lab Environment
+Cloud Environment: Al Nafi provides pre-configured Ubuntu 20.04 LTS machines. Click Start Lab to access your environment with:
+
+4GB RAM minimum
+20GB disk space
+Internet connectivity
+Pre-installed dependencies
+Task 1: Installing and Configuring the ELK Stack
+Step 1.1: System Preparation
+Update system and install Java (required for ELK):
+
+# Update system packages
+sudo apt update && sudo apt upgrade -y
+
+# Install Java 11
+sudo apt install openjdk-11-jdk -y
+
+# Verify installation
+java -version
+Step 1.2: Install Elasticsearch
+# Import GPG key and add repository
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-7.x.list
+
+# Install Elasticsearch
+sudo apt update
+sudo apt install elasticsearch -y
+
+# Configure Elasticsearch
+sudo nano /etc/elasticsearch/elasticsearch.yml
+Add these minimal configurations:
+
+network.host: localhost
+http.port: 9200
+discovery.type: single-node
+xpack.security.enabled: false
+Start Elasticsearch:
+
+sudo systemctl start elasticsearch
+sudo systemctl enable elasticsearch
+
+# Verify (wait 30 seconds for startup)
+sleep 30
+curl -X GET "localhost:9200/"
+Step 1.3: Install Logstash
+# Install Logstash
+sudo apt install logstash -y
+
+# Create pipeline configuration
+sudo nano /etc/logstash/conf.d/siem-pipeline.conf
+Basic pipeline configuration (students will enhance this):
+
+input {
+  file {
+    path => "/var/log/auth.log"
+    start_position => "beginning"
+    type => "auth"
+  }
+  # TODO: Add syslog input
+  # TODO: Add Apache log input
+}
+
+filter {
+  if [type] == "auth" {
+    grok {
+      match => { "message" => "%{SYSLOGTIMESTAMP:timestamp} %{IPORHOST:host} %{PROG:program}: %{GREEDYDATA:message_body}" }
+    }
+  }
+  # TODO: Add filters for other log types
+  # TODO: Add date parsing
+  # TODO: Add GeoIP enrichment
+}
+
+output {
+  elasticsearch {
+    hosts => ["localhost:9200"]
+    index => "siem-logs-%{+YYYY.MM.dd}"
+  }
+}
+Start Logstash:
+
+sudo systemctl start logstash
+sudo systemctl enable logstash
+Step 1.4: Install Kibana
+# Install Kibana
+sudo apt install kibana -y
+
+# Configure Kibana
+sudo nano /etc/kibana/kibana.yml
+Add configuration:
+
+server.port: 5601
+server.host: "localhost"
+elasticsearch.hosts: ["http://localhost:9200"]
+Start Kibana:
+
+sudo systemctl start kibana
+sudo systemctl enable kibana
+
+# Verify after 60 seconds
+sleep 60
+curl -I http://localhost:5601
+Step 1.5: Install Apache for Log Generation
+# Install Apache
+sudo apt install apache2 -y
+sudo systemctl start apache2
+
+# Generate test traffic
+curl http://localhost/
+curl http://localhost/test-page
+Task 2: Creating Log Analysis Scripts
+Step 2.1: Authentication Log Analyzer
+Create a script to analyze authentication events:
+
+mkdir ~/siem-scripts
+cd ~/siem-scripts
+nano auth-analyzer.sh
+Starter template (students complete the implementation):
+
+#!/bin/bash
+
+# Authentication Log Analyzer
+# TODO: Complete the implementation
+
+LOG_FILE="/var/log/auth.log"
+OUTPUT_DIR="$HOME/siem-analysis"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $OUTPUT_DIR
+
+# Function to analyze failed logins
+analyze_failed_logins() {
+    # TODO: Extract failed login attempts
+    # TODO: Count attempts per IP
+    # TODO: Sort by frequency
+    # TODO: Save to output file
+    echo "Analyzing failed logins..."
+}
+
+# Function to detect brute force attacks
+detect_brute_force() {
+    # TODO: Identify IPs with >5 failed attempts
+    # TODO: Extract timestamp, IP, and username
+    # TODO: Generate alert report
+    echo "Detecting brute force attempts..."
+}
+
+# Function to analyze sudo usage
+analyze_sudo_usage() {
+    # TODO: Extract sudo commands
+    # TODO: Identify users and commands executed
+    # TODO: Generate usage report
+    echo "Analyzing sudo usage..."
+}
+
+# TODO: Call all analysis functions
+# TODO: Generate summary report
+
+echo "Analysis complete. Results in: $OUTPUT_DIR"
+Make executable:
+
+chmod +x auth-analyzer.sh
+Step 2.2: Web Log Analyzer
+Create web traffic analysis script:
+
+nano web-analyzer.sh
+Starter template:
+
+#!/bin/bash
+
+# Web Log Analyzer
+# TODO: Complete the implementation
+
+LOG_FILE="/var/log/apache2/access.log"
+OUTPUT_DIR="$HOME/siem-analysis"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $OUTPUT_DIR
+
+# Function to analyze top IPs
+analyze_top_ips() {
+    # TODO: Extract IP addresses
+    # TODO: Count occurrences
+    # TODO: Sort and display top 20
+    echo "Analyzing top IPs..."
+}
+
+# Function to analyze HTTP status codes
+analyze_status_codes() {
+    # TODO: Extract status codes
+    # TODO: Count distribution
+    # TODO: Generate report
+    echo "Analyzing status codes..."
+}
+
+# Function to detect web attacks
+detect_web_attacks() {
+    # TODO: Search for SQL injection patterns
+    # TODO: Search for directory traversal attempts
+    # TODO: Identify excessive 404 errors
+    # TODO: Generate security alert report
+    echo "Detecting web attacks..."
+}
+
+# TODO: Execute all analysis functions
+# TODO: Create summary report
+
+echo "Web log analysis complete"
+Make executable:
+
+chmod +x web-analyzer.sh
+Step 2.3: Real-time Monitor
+Create real-time monitoring script:
+
+nano realtime-monitor.sh
+Starter template:
+
+#!/bin/bash
+
+# Real-time Security Monitor
+# TODO: Complete the implementation
+
+AUTH_LOG="/var/log/auth.log"
+ALERT_FILE="$HOME/siem-analysis/alerts_$(date +%Y%m%d).txt"
+
+mkdir -p $HOME/siem-analysis
+
+# Function to send alerts
+send_alert() {
+    local alert_type=$1
+    local alert_message=$2
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # TODO: Format and save alert
+    # TODO: Optionally send notification
+    echo "[$timestamp] ALERT: $alert_type - $alert_message"
+}
+
+# Monitor authentication logs
+monitor_auth_logs() {
+    # TODO: Use tail -F to follow auth.log
+    # TODO: Detect failed logins in real-time
+    # TODO: Detect successful logins
+    # TODO: Detect sudo usage
+    # TODO: Call send_alert for each event
+    echo "Monitoring authentication logs..."
+}
+
+# Monitor web logs
+monitor_web_logs() {
+    # TODO: Use tail -F to follow access.log
+    # TODO: Detect 404 errors
+    # TODO: Detect attack patterns
+    # TODO: Call send_alert for suspicious activity
+    echo "Monitoring web logs..."
+}
+
+# TODO: Start both monitoring functions in background
+# TODO: Keep script running
+
+echo "Real-time monitoring started. Press Ctrl+C to stop."
+Make executable:
+
+chmod +x realtime-monitor.sh
+Task 3: Log Retention and Normalization
+Step 3.1: Configure Log Rotation
+Create logrotate configuration:
+
+sudo nano /etc/logrotate.d/siem-logs
+Add configuration:
+
+/var/log/auth.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 syslog adm
+}
+
+/var/log/apache2/*.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+    sharedscripts
+    postrotate
+        systemctl reload apache2
+    endscript
+}
+Test configuration:
+
+# Dry run
+sudo logrotate -d /etc/logrotate.d/siem-logs
+
+# Force rotation for testing
+sudo logrotate -f /etc/logrotate.d/siem-logs
+Step 3.2: Log Normalization Script
+Create normalization script:
+
+nano log-normalizer.sh
+Starter template:
+
+#!/bin/bash
+
+# Log Normalization Script
+# TODO: Complete the implementation
+
+INPUT_DIR="/var/log"
+OUTPUT_DIR="$HOME/siem-analysis/normalized"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p $OUTPUT_DIR
+
+# Function to normalize auth logs to JSON
+normalize_auth_logs() {
+    local output_file="$OUTPUT_DIR/auth_normalized_$DATE.json"
+    
+    # TODO: Read auth.log line by line
+    # TODO: Extract timestamp, host, event type, user, IP
+    # TODO: Convert to JSON format with fields:
+    #   - timestamp
+    #   - event_type (auth_failure, auth_success, privilege_escalation)
+    #   - user
+    #   - source_ip
+    #   - severity (high, medium, low)
+    #   - category
+    # TODO: Write to output file
+    
+    echo "Auth logs normalized to: $output_file"
+}
+
+# Function to normalize web logs to JSON
+normalize_web_logs() {
+    local output_file="$OUTPUT_DIR/web_normalized_$DATE.json"
+    
+    # TODO: Read Apache access.log line by line
+    # TODO: Parse Apache combined log format
+    # TODO: Convert to JSON with fields:
+    #   - timestamp
+    #   - source_ip
+    #   - method
+    #   - url
+    #   - status_code
+    #   - user_agent
+    #   - severity (based on status code)
+    # TODO: Write to output file
+    
+    echo "Web logs normalized to: $output_file"
+}
+
+# Function to create summary
+create_summary() {
+    # TODO: Count events by type
+    # TODO: Count events by severity
+    # TODO: Generate summary report
+    echo "Summary created"
+}
+
+# TODO: Execute all normalization functions
+
+echo "Log normalization complete"
+Make executable:
+
+chmod +x log-normalizer.sh
+Task 4: Kibana Dashboard Setup
+Step 4.1: Create Index Pattern via API
+# Create index pattern
+curl -X POST "localhost:5601/api/saved_objects/index-pattern/siem-logs-*" \
+-H "Content-Type: application/json" \
+-H "kbn-xsrf: true" \
+-d '{
+  "attributes": {
+    "title": "siem-logs-*",
+    "timeFieldName": "@timestamp"
+  }
+}'
+Step 4.2: Dashboard Setup Script
+Create dashboard configuration script:
+
+nano setup-dashboard.sh
+Starter template:
+
+#!/bin/bash
+
+# Kibana Dashboard Setup
+# TODO: Complete the implementation
+
+KIBANA_URL="http://localhost:5601"
+
+# Wait for Kibana to be ready
+wait_for_kibana() {
+    # TODO: Poll Kibana status endpoint
+    # TODO: Wait until all services available
+    # TODO: Add timeout mechanism
+    echo "Waiting for Kibana..."
+}
+
+# Create index pattern
+create_index_pattern() {
+    # TODO: POST to saved_objects API
+    # TODO: Create siem-logs-* pattern
+    # TODO: Set @timestamp as time field
+    echo "Creating index pattern..."
+}
+
+# Create visualizations
+create_visualizations() {
+    # TODO: Create pie chart for log types
+    # TODO: Create bar chart for top IPs
+    # TODO: Create line chart for events over time
+    # TODO: Create table for recent alerts
+    echo "Creating visualizations..."
+}
+
+# TODO: Execute all setup functions
+
+echo "Dashboard setup complete. Access at: $KIBANA_URL"
+Make executable:
+
+chmod +x setup-dashboard.sh
+Task 5: Testing and Validation
+Step 5.1: Generate Test Data
+Create test data generator:
+
+nano generate-test-data.sh
+Script content:
+
+#!/bin/bash
+
+echo "Generating test security events..."
+
+# Generate failed login attempts
+for i in {1..5}; do
+    logger -p auth.info "sshd[$$]: Failed password for testuser from 192.168.1.100 port 22 ssh2"
+    sleep 1
+done
+
+# Generate successful login
+logger -p auth.info "sshd[$$]: Accepted password for admin from 192.168.1.50 port 22 ssh2"
+
+# Generate sudo usage
+logger -p auth.info "sudo: admin : TTY=pts/0 ; PWD=/home/admin ; USER=root ; COMMAND=/bin/ls"
+
+# Generate web traffic
+curl -s http://localhost/ > /dev/null
+curl -s http://localhost/admin > /dev/null
+curl -s http://localhost/test.php?id=1%20UNION%20SELECT > /dev/null
+
+echo "Test data generated successfully"
+Make executable and run:
+
+chmod +x generate-test-data.sh
+./generate-test-data.sh
+Step 5.2: Validation Script
+Create validation script:
+
+nano validate-siem.sh
+Starter template:
+
+#!/bin/bash
+
+# SIEM Validation Script
+# TODO: Complete the implementation
+
+echo "=== SIEM System Validation ==="
+
+# Check Elasticsearch
+check_elasticsearch() {
+    # TODO: Query cluster health endpoint
+    # TODO: Verify status is green or yellow
+    # TODO: Display result
+    echo "Checking Elasticsearch..."
+}
+
+# Check Logstash
+check_logstash() {
+    # TODO: Check systemctl status
+    # TODO: Verify service is active
+    # TODO: Display result
+    echo "Checking Logstash..."
+}
+
+# Check Kibana
+check_kibana() {
+    # TODO: Query status API
+    # TODO: Verify all services available
+    # TODO: Display result
+    echo "Checking Kibana..."
+}
+
+# Check log indexing
+check_indexing() {
+    # TODO: Query document count in siem-logs-*
+    # TODO: Verify logs are being indexed
+    # TODO: Display count
+    echo "Checking log indexing..."
+}
+
+# TODO: Execute all validation checks
+# TODO: Generate overall status report
+
+echo "Validation complete"
+Make executable and run:
+
+chmod +x validate-siem.sh
+./validate-siem.sh
+Expected Outcomes
+After completing this lab, students should have:
+
+Functional ELK Stack installation with all components running
+Custom log analysis scripts for authentication and web logs
+Configured log retention policies with rotation
+Log normalization pipeline converting logs to JSON format
+Basic Kibana dashboards for security monitoring
+Understanding of SIEM concepts and log management practices
+Troubleshooting Tips
+Elasticsearch won't start:
+
+Check Java installation: java -version
+Verify memory: Elasticsearch needs minimum 2GB RAM
+Check logs: sudo journalctl -u elasticsearch -f
+Logstash not processing logs:
+
+Verify configuration syntax: sudo /usr/share/logstash/bin/logstash --config.test_and_exit -f /etc/logstash/conf.d/siem-pipeline.conf
+Check file permissions on log files
+Review Logstash logs: sudo journalctl -u logstash -f
+Kibana not accessible:
+
+Verify Elasticsearch is running first
+Check Kibana logs: sudo journalctl -u kibana -f
+Ensure port 5601 is not blocked
+No logs appearing in Elasticsearch:
+
+Verify Logstash is reading log files
+Check index exists: curl -X GET "localhost:9200/_cat/indices?v"
+Generate test data and wait 1-2 minutes for processing
+Conclusion
+This lab introduced centralized log management using the ELK Stack as an open-source SIEM solution. Students learned to install and configure Elasticsearch, Logstash, and Kibana, create custom log analysis scripts, implement log retention policies, and build security monitoring dashboards. These skills are fundamental for security operations, incident response, and compliance monitoring in modern IT environments. The ELK Stack provides a scalable foundation for enterprise log management and security analytics.
