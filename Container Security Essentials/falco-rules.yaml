@@ -1,0 +1,22 @@
+- rule: Suspicious Container Activity
+  desc: Detect suspicious activities in containers
+  condition: >
+    spawned_process and container and
+    (proc.name in (nc, ncat, netcat, wget, curl) or
+     proc.cmdline contains "bash -i" or
+     proc.cmdline contains "/bin/sh -i")
+  output: >
+    Suspicious activity in container
+    (user=%user.name command=%proc.cmdline container=%container.name image=%container.image)
+  priority: WARNING
+
+- rule: Container Privilege Escalation
+  desc: Detect privilege escalation attempts
+  condition: >
+    spawned_process and container and
+    (proc.name in (sudo, su) or
+     proc.cmdline contains "chmod +s")
+  output: >
+    Privilege escalation attempt in container
+    (user=%user.name command=%proc.cmdline container=%container.name)
+  priority: CRITICAL
