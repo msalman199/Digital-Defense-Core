@@ -1,0 +1,520 @@
+ Endpoint Security & Hardening
+Objectives
+By the end of this lab, students will be able to:
+
+Configure secure SSH access with key-based authentication
+Install and configure fail2ban to protect against brute force attacks
+Create monitoring scripts to detect unauthorized access attempts
+Implement basic endpoint hardening techniques on Linux systems
+Understand the importance of proactive security monitoring
+Prerequisites
+Before starting this lab, students should have:
+
+Basic knowledge of Linux command line operations
+Understanding of file permissions and ownership concepts
+Familiarity with text editors like nano or vim
+Basic understanding of SSH protocol
+Knowledge of log file locations in Linux systems
+Lab Environment
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured Ubuntu environment. No need to build your own virtual machine or set up additional infrastructure.
+
+Task 1: Secure SSH Access Configuration
+Subtask 1.1: Create SSH Key Pair
+First, we will generate a secure SSH key pair for authentication.
+
+Open a terminal on your Linux machine
+
+Generate an SSH key pair using the following command:
+
+ssh-keygen -t rsa -b 4096 -C "lab-user@endpoint-security"
+When prompted for the file location, press Enter to accept the default location
+
+Set a strong passphrase when prompted (remember this passphrase)
+
+Verify the key generation by listing the SSH directory:
+
+ls -la ~/.ssh/
+You should see two files: id_rsa (private key) and id_rsa.pub (public key).
+
+Subtask 1.2: Configure SSH Key Authentication
+Copy the public key to the authorized keys file:
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+Set proper permissions on SSH files:
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/id_rsa
+chmod 644 ~/.ssh/id_rsa.pub
+Subtask 1.3: Harden SSH Configuration
+Create a backup of the original SSH configuration:
+sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
+Edit the SSH configuration file:
+sudo nano /etc/ssh/sshd_config
+Modify or add the following security settings:
+# Change default port (optional but recommended)
+Port 2222
+
+# Disable root login
+PermitRootLogin no
+
+# Enable public key authentication
+PubkeyAuthentication yes
+
+# Disable password authentication
+PasswordAuthentication no
+
+# Disable empty passwords
+PermitEmptyPasswords no
+
+# Limit login attempts
+MaxAuthTries 3
+
+# Set login grace time
+LoginGraceTime 60
+
+# Disable X11 forwarding if not needed
+X11Forwarding no
+
+# Use protocol 2 only
+Protocol 2
+
+# Allow specific users only (replace with your username)
+AllowUsers $USER
+Save the file and exit the editor
+
+Test the SSH configuration for syntax errors:
+
+sudo sshd -t
+If no errors are reported, restart the SSH service:
+sudo systemctl restart ssh
+Verify SSH service status:
+sudo systemctl status ssh
+Task 2: Install and Configure fail2ban
+Subtask 2.1: Install fail2ban
+Update the package repository:
+sudo apt update
+Install fail2ban:
+sudo apt install fail2ban -y
+Verify the installation:
+sudo systemctl status fail2ban
+Subtask 2.2: Configure fail2ban for SSH Protection
+Create a local configuration file:
+sudo nano /etc/fail2ban/jail.local
+Add the following configuration:
+[DEFAULT]
+# Ban time in seconds (10 minutes)
+bantime = 600
+
+# Find time window in seconds (10 minutes)
+findtime = 600
+
+# Number of failures before ban
+maxretry = 3
+
+# Ignore local IP addresses
+ignoreip = 127.0.0.1/8 ::1
+
+[sshd]
+enabled = true
+port = 2222
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 1800
+findtime = 600
+Save and exit the file
+
+Restart fail2ban to apply the configuration:
+
+sudo systemctl restart fail2ban
+Enable fail2ban to start on boot:
+sudo systemctl enable fail2ban
+Subtask 2.3: Verify fail2ban Configuration
+Check fail2ban status:
+sudo fail2ban-client status
+Check SSH jail status specifically:
+sudo fail2ban-client status sshd
+View fail2ban log to ensure it's working:
+sudo tail -f /var/log/fail2ban.log
+Press Ctrl+C to stop viewing the log.
+
+Task 3: Create Monitoring Scripts for Unauthorized Access
+Subtask 3.1: Create SSH Login Monitor Script
+Create a directory for security scripts:
+mkdir ~/security-scripts
+cd ~/security-scripts
+Create the SSH login monitoring script:
+nano ssh-monitor.sh
+Add the following script content:
+#!/bin/bash
+
+# SSH Login Monitor Script
+# This script monitors SSH login attempts and alerts on suspicious activity
+
+LOG_FILE="/var/log/auth.log"
+ALERT_FILE="$HOME/security-scripts/ssh-alerts.log"
+TEMP_FILE="/tmp/ssh-check.tmp"
+
+# Function to log alerts
+log_alert() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$ALERT_FILE"
+}
+
+# Function to check for failed SSH attempts
+check_failed_logins() {
+    echo "Checking for failed SSH login attempts..."
+    
+    # Get failed login attempts from the last hour
+    FAILED_ATTEMPTS=$(grep "$(date '+%b %d %H')" "$LOG_FILE" | grep "Failed password" | wc -l)
+    
+    if [ "$FAILED_ATTEMPTS" -gt 5 ]; then
+        ALERT_MSG="HIGH ALERT: $FAILED_ATTEMPTS failed SSH login attempts detected in the last hour"
+        echo "$ALERT_MSG"
+        log_alert "$ALERT_MSG"
+        
+        # Show the failed attempts
+        grep "$(date '+%b %d %H')" "$LOG_FILE" | grep "Failed password" | tail -10 >> "$ALERT_FILE"
+    else
+        echo "Normal activity: $FAILED_ATTEMPTS failed attempts in the last hour"
+    fi
+}
+
+# Function to check for successful logins
+check_successful_logins() {
+    echo "Checking for successful SSH logins..."
+    
+    # Get successful login attempts from the last hour
+    SUCCESSFUL_LOGINS=$(grep "$(date '+%b %d %H')" "$LOG_FILE" | grep "Accepted" | wc -l)
+    
+    if [ "$SUCCESSFUL_LOGINS" -gt 0 ]; then
+        echo "INFO: $SUCCESSFUL_LOGINS successful SSH logins in the last hour"
+        log_alert "INFO: $SUCCESSFUL_LOGINS successful SSH logins detected"
+        
+        # Log the successful attempts
+        grep "$(date '+%b %d %H')" "$LOG_FILE" | grep "Accepted" >> "$ALERT_FILE"
+    fi
+}
+
+# Function to check for unusual login times
+check_unusual_times() {
+    CURRENT_HOUR=$(date '+%H')
+    
+    # Check if login attempts are happening during unusual hours (midnight to 6 AM)
+    if [ "$CURRENT_HOUR" -ge 0 ] && [ "$CURRENT_HOUR" -le 6 ]; then
+        NIGHT_ATTEMPTS=$(grep "$(date '+%b %d')" "$LOG_FILE" | grep -E "(0[0-6]):" | grep -E "(Failed|Accepted)" | wc -l)
+        
+        if [ "$NIGHT_ATTEMPTS" -gt 0 ]; then
+            ALERT_MSG="SUSPICIOUS: $NIGHT_ATTEMPTS login attempts during unusual hours (00:00-06:00)"
+            echo "$ALERT_MSG"
+            log_alert "$ALERT_MSG"
+        fi
+    fi
+}
+
+# Main execution
+echo "=== SSH Security Monitor Started at $(date) ==="
+log_alert "SSH Security Monitor Started"
+
+check_failed_logins
+check_successful_logins
+check_unusual_times
+
+echo "=== SSH Security Monitor Completed ==="
+echo "Check $ALERT_FILE for detailed alerts"
+Make the script executable:
+chmod +x ssh-monitor.sh
+Subtask 3.2: Create System Access Monitor Script
+Create a system access monitoring script:
+nano system-monitor.sh
+Add the following script content:
+#!/bin/bash
+
+# System Access Monitor Script
+# Monitors various system access points and user activities
+
+ALERT_FILE="$HOME/security-scripts/system-alerts.log"
+LOG_FILE="/var/log/auth.log"
+
+# Function to log alerts
+log_alert() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$ALERT_FILE"
+}
+
+# Function to check for sudo usage
+check_sudo_usage() {
+    echo "Checking sudo usage..."
+    
+    SUDO_ATTEMPTS=$(grep "$(date '+%b %d')" "$LOG_FILE" | grep "sudo" | wc -l)
+    
+    if [ "$SUDO_ATTEMPTS" -gt 10 ]; then
+        ALERT_MSG="WARNING: High sudo usage detected - $SUDO_ATTEMPTS attempts today"
+        echo "$ALERT_MSG"
+        log_alert "$ALERT_MSG"
+    else
+        echo "Normal sudo usage: $SUDO_ATTEMPTS attempts today"
+    fi
+}
+
+# Function to check for new user accounts
+check_new_users() {
+    echo "Checking for recently created user accounts..."
+    
+    # Check for users created in the last 24 hours
+    RECENT_USERS=$(find /home -maxdepth 1 -type d -newerct "1 day ago" | grep -v "^/home$" | wc -l)
+    
+    if [ "$RECENT_USERS" -gt 0 ]; then
+        ALERT_MSG="ALERT: $RECENT_USERS new user directories detected in the last 24 hours"
+        echo "$ALERT_MSG"
+        log_alert "$ALERT_MSG"
+        
+        # List the new directories
+        find /home -maxdepth 1 -type d -newerct "1 day ago" | grep -v "^/home$" >> "$ALERT_FILE"
+    fi
+}
+
+# Function to check for failed su attempts
+check_su_attempts() {
+    echo "Checking for su (switch user) attempts..."
+    
+    SU_FAILURES=$(grep "$(date '+%b %d')" "$LOG_FILE" | grep "su:" | grep "FAILED" | wc -l)
+    
+    if [ "$SU_FAILURES" -gt 0 ]; then
+        ALERT_MSG="WARNING: $SU_FAILURES failed su attempts detected today"
+        echo "$ALERT_MSG"
+        log_alert "$ALERT_MSG"
+    fi
+}
+
+# Function to check system load
+check_system_load() {
+    echo "Checking system load..."
+    
+    LOAD_AVG=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | sed 's/,//')
+    LOAD_THRESHOLD=2.0
+    
+    if (( $(echo "$LOAD_AVG > $LOAD_THRESHOLD" | bc -l) )); then
+        ALERT_MSG="WARNING: High system load detected - $LOAD_AVG"
+        echo "$ALERT_MSG"
+        log_alert "$ALERT_MSG"
+    else
+        echo "System load normal: $LOAD_AVG"
+    fi
+}
+
+# Function to check disk usage
+check_disk_usage() {
+    echo "Checking disk usage..."
+    
+    DISK_USAGE=$(df / | awk 'NR==2 {print $5}' | sed 's/%//')
+    
+    if [ "$DISK_USAGE" -gt 80 ]; then
+        ALERT_MSG="WARNING: High disk usage detected - ${DISK_USAGE}%"
+        echo "$ALERT_MSG"
+        log_alert "$ALERT_MSG"
+    else
+        echo "Disk usage normal: ${DISK_USAGE}%"
+    fi
+}
+
+# Main execution
+echo "=== System Security Monitor Started at $(date) ==="
+log_alert "System Security Monitor Started"
+
+check_sudo_usage
+check_new_users
+check_su_attempts
+check_system_load
+check_disk_usage
+
+echo "=== System Security Monitor Completed ==="
+echo "Check $ALERT_FILE for detailed alerts"
+Make the script executable:
+chmod +x system-monitor.sh
+Subtask 3.3: Create Automated Monitoring with Cron
+Create a master monitoring script that runs both monitors:
+nano security-check.sh
+Add the following content:
+#!/bin/bash
+
+# Master Security Check Script
+# Runs all security monitoring scripts
+
+SCRIPT_DIR="$HOME/security-scripts"
+LOG_FILE="$SCRIPT_DIR/security-master.log"
+
+echo "=== Security Check Started at $(date) ===" >> "$LOG_FILE"
+
+# Run SSH monitor
+echo "Running SSH Monitor..." >> "$LOG_FILE"
+"$SCRIPT_DIR/ssh-monitor.sh" >> "$LOG_FILE" 2>&1
+
+echo "" >> "$LOG_FILE"
+
+# Run System monitor
+echo "Running System Monitor..." >> "$LOG_FILE"
+"$SCRIPT_DIR/system-monitor.sh" >> "$LOG_FILE" 2>&1
+
+echo "=== Security Check Completed at $(date) ===" >> "$LOG_FILE"
+echo "" >> "$LOG_FILE"
+
+# Keep only last 1000 lines of log to prevent it from growing too large
+tail -1000 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+Make the script executable:
+chmod +x security-check.sh
+Set up a cron job to run the security check every hour:
+crontab -e
+Add the following line to run the security check every hour:
+0 * * * * /home/$USER/security-scripts/security-check.sh
+Save and exit the crontab editor
+Task 4: Test and Verify Security Measures
+Subtask 4.1: Test SSH Security
+Test the SSH configuration by attempting to connect with the new port:
+ssh -p 2222 $USER@localhost
+Verify that password authentication is disabled by trying to connect without keys
+
+Check fail2ban is monitoring SSH:
+
+sudo fail2ban-client status sshd
+Subtask 4.2: Test Monitoring Scripts
+Run the SSH monitoring script manually:
+cd ~/security-scripts
+./ssh-monitor.sh
+Run the system monitoring script:
+./system-monitor.sh
+Check the generated alert files:
+ls -la ~/security-scripts/*.log
+cat ~/security-scripts/ssh-alerts.log
+cat ~/security-scripts/system-alerts.log
+Subtask 4.3: Generate Test Events
+Create some test log entries to verify monitoring:
+# Simulate a failed login attempt in the auth log (for testing purposes)
+logger -p auth.info "Failed password for testuser from 192.168.1.100 port 22 ssh2"
+Run the monitoring script again to see if it detects the test event:
+./ssh-monitor.sh
+Check the alert file for the new entry:
+tail ~/security-scripts/ssh-alerts.log
+Task 5: Additional Hardening Measures
+Subtask 5.1: Configure Firewall Rules
+Install and enable UFW (Uncomplicated Firewall):
+sudo ufw enable
+Set default policies:
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+Allow SSH on the custom port:
+sudo ufw allow 2222/tcp
+Check firewall status:
+sudo ufw status verbose
+Subtask 5.2: Set Up File Integrity Monitoring
+Create a simple file integrity checker:
+nano ~/security-scripts/file-integrity.sh
+Add the following script:
+#!/bin/bash
+
+# File Integrity Monitor
+# Monitors critical system files for changes
+
+MONITOR_DIRS="/etc/ssh /etc/passwd /etc/shadow /etc/sudoers"
+BASELINE_FILE="$HOME/security-scripts/file-baseline.txt"
+ALERT_FILE="$HOME/security-scripts/integrity-alerts.log"
+
+# Function to log alerts
+log_alert() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$ALERT_FILE"
+}
+
+# Create baseline if it doesn't exist
+if [ ! -f "$BASELINE_FILE" ]; then
+    echo "Creating file integrity baseline..."
+    for dir in $MONITOR_DIRS; do
+        if [ -e "$dir" ]; then
+            find "$dir" -type f -exec md5sum {} \; >> "$BASELINE_FILE"
+        fi
+    done
+    echo "Baseline created at $BASELINE_FILE"
+    log_alert "File integrity baseline created"
+    exit 0
+fi
+
+# Check for changes
+echo "Checking file integrity..."
+TEMP_FILE="/tmp/current-hashes.txt"
+
+for dir in $MONITOR_DIRS; do
+    if [ -e "$dir" ]; then
+        find "$dir" -type f -exec md5sum {} \; >> "$TEMP_FILE"
+    fi
+done
+
+# Compare with baseline
+if ! diff -q "$BASELINE_FILE" "$TEMP_FILE" > /dev/null; then
+    ALERT_MSG="WARNING: File integrity changes detected!"
+    echo "$ALERT_MSG"
+    log_alert "$ALERT_MSG"
+    
+    # Show differences
+    diff "$BASELINE_FILE" "$TEMP_FILE" >> "$ALERT_FILE"
+else
+    echo "File integrity check passed - no changes detected"
+fi
+
+# Clean up
+rm -f "$TEMP_FILE"
+Make the script executable:
+chmod +x ~/security-scripts/file-integrity.sh
+Create the initial baseline:
+~/security-scripts/file-integrity.sh
+Test the integrity checker:
+~/security-scripts/file-integrity.sh
+Verification and Testing
+Final Security Check
+Verify all services are running correctly:
+sudo systemctl status ssh
+sudo systemctl status fail2ban
+sudo ufw status
+Check that monitoring scripts are working:
+ls -la ~/security-scripts/
+cat ~/security-scripts/security-master.log
+Verify cron job is scheduled:
+crontab -l
+Test the complete security setup by running the master script:
+~/security-scripts/security-check.sh
+Troubleshooting Common Issues
+SSH Connection Issues
+If you cannot connect via SSH:
+
+Check if SSH service is running:
+sudo systemctl status ssh
+Verify the configuration syntax:
+sudo sshd -t
+Check the SSH log for errors:
+sudo tail -f /var/log/auth.log
+fail2ban Not Working
+If fail2ban is not banning IPs:
+
+Check fail2ban status:
+sudo fail2ban-client status
+Verify the jail configuration:
+sudo fail2ban-client get sshd logpath
+Check fail2ban logs:
+sudo tail -f /var/log/fail2ban.log
+Script Permission Issues
+If scripts are not executable:
+
+chmod +x ~/security-scripts/*.sh
+Conclusion
+In this lab, you have successfully implemented comprehensive endpoint security and hardening measures on a Linux system. You accomplished the following key security objectives:
+
+SSH Security Enhancement: You configured secure SSH access by implementing key-based authentication, disabling password authentication, changing the default port, and restricting user access. These measures significantly reduce the attack surface for remote access attempts.
+
+Automated Intrusion Prevention: You installed and configured fail2ban to automatically detect and block malicious login attempts. This provides real-time protection against brute force attacks and reduces the load on your system from repeated failed authentication attempts.
+
+Proactive Monitoring: You created comprehensive monitoring scripts that track SSH access attempts, system resource usage, user account changes, and other security-relevant events. These scripts provide early warning of potential security incidents.
+
+File Integrity Monitoring: You implemented a basic file integrity monitoring system that can detect unauthorized changes to critical system files, helping to identify potential compromises or configuration drift.
+
+Network Security: You configured a host-based firewall using UFW to control network access and reduce exposure to network-based attacks.
+
+Automation: You set up automated execution of security checks through cron jobs, ensuring continuous monitoring without manual intervention.
+
+These security measures work together to create a layered defense strategy that is essential for protecting endpoints in modern IT environments. The skills you have learned are directly applicable to real-world scenarios and align with industry best practices for endpoint security. Regular monitoring and maintenance of these security controls will help ensure the ongoing protection of your Linux systems against evolving threats.
+
+Remember to regularly review and update your security configurations, monitor the alert logs, and stay informed about new security threats and mitigation techniques to maintain an effective security posture.
