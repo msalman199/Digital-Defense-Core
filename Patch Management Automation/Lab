@@ -1,0 +1,572 @@
+ Patch Management Automation
+Objectives
+By the end of this lab, students will be able to:
+
+Implement automated patch management workflows using Python
+Create vulnerability scanning and assessment tools
+Configure automated security updates for Linux systems
+Generate patch deployment reports and monitoring dashboards
+Implement rollback mechanisms for failed patches
+Prerequisites
+Before starting this lab, students should have:
+
+Basic Linux command line proficiency
+Python programming fundamentals
+Understanding of package management (apt/yum)
+Basic system administration knowledge
+Lab Environment
+Al Nafi provides pre-configured Ubuntu 20.04 LTS cloud machines. Click Start Lab to access your environment with:
+
+Ubuntu 20.04 LTS with sudo privileges
+Python 3.8+ and pip installed
+Git and development tools
+All necessary packages pre-installed
+Task 1: Environment Setup and Configuration
+Step 1: Install Required Tools
+Update your system and install patch management dependencies:
+
+# Update package lists
+sudo apt update
+
+# Install required packages
+sudo apt install -y python3-pip python3-venv unattended-upgrades apt-listchanges
+
+# Install Python packages
+pip3 install pyyaml schedule psutil requests
+
+# Install security scanning tools
+sudo apt install -y lynis
+Step 2: Create Project Structure
+Set up an organized directory structure:
+
+# Create project directory
+mkdir -p ~/patch-management-lab
+cd ~/patch-management-lab
+
+# Create subdirectories
+mkdir -p {scripts,configs,logs,reports}
+
+# Create initial files
+touch scripts/__init__.py
+touch configs/patch_config.yaml
+Step 3: Configure Automated Updates
+Configure the unattended-upgrades package:
+
+# Enable unattended upgrades
+sudo dpkg-reconfigure -plow unattended-upgrades
+
+# Create custom configuration
+sudo tee /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT::Periodic::AutocleanInterval "7";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+Step 4: Create Configuration File
+Create a YAML configuration file for patch management settings:
+
+# configs/patch_config.yaml
+patch_settings:
+  auto_reboot: false
+  maintenance_window: "02:00-04:00"
+  excluded_packages: []
+  security_only: true
+
+notification:
+  email_enabled: false
+  webhook_url: null
+
+logging:
+  level: INFO
+  file: logs/patch_activity.log
+Task 2: Develop Core Patch Management Module
+Step 1: Create PatchManager Class
+Create scripts/patch_manager.py with the following starter template:
+
+#!/usr/bin/env python3
+"""
+Patch Management Automation System
+"""
+
+import os
+import subprocess
+import json
+import yaml
+import logging
+import datetime
+from typing import List, Dict
+
+class PatchManager:
+    def __init__(self, config_file: str = "configs/patch_config.yaml"):
+        """
+        Initialize the PatchManager with configuration.
+        
+        Args:
+            config_file: Path to YAML configuration file
+        """
+        self.config_file = config_file
+        self.config = self.load_config()
+        self.setup_logging()
+        
+    def load_config(self) -> Dict:
+        """
+        Load configuration from YAML file.
+        
+        Returns:
+            Dictionary containing configuration settings
+        """
+        # TODO: Implement YAML file loading
+        # TODO: Handle FileNotFoundError and create default config
+        # TODO: Return configuration dictionary
+        pass
+    
+    def setup_logging(self):
+        """Configure logging based on config settings."""
+        # TODO: Set up logging with file and console handlers
+        # TODO: Use log level from configuration
+        # TODO: Create log directory if it doesn't exist
+        pass
+    
+    def get_available_updates(self) -> List[Dict]:
+        """
+        Get list of available package updates.
+        
+        Returns:
+            List of dictionaries containing package update information
+        """
+        # TODO: Run 'apt update' to refresh package lists
+        # TODO: Run 'apt list --upgradable' to get updates
+        # TODO: Parse output and return list of packages
+        pass
+    
+    def get_security_updates(self) -> List[Dict]:
+        """
+        Get list of available security updates only.
+        
+        Returns:
+            List of security update packages
+        """
+        # TODO: Filter available updates for security patches
+        # TODO: Check for 'security' or 'ubuntu-security' in package info
+        # TODO: Return filtered list
+        pass
+    
+    def install_updates(self, security_only: bool = True) -> Dict:
+        """
+        Install available updates.
+        
+        Args:
+            security_only: If True, install only security updates
+            
+        Returns:
+            Dictionary with installation results
+        """
+        # TODO: Create result dictionary with timestamp
+        # TODO: Run appropriate apt/unattended-upgrade command
+        # TODO: Check if reboot is required (/var/run/reboot-required)
+        # TODO: Return results with success status and errors
+        pass
+    
+    def create_system_snapshot(self) -> Dict:
+        """
+        Create a snapshot of current system state.
+        
+        Returns:
+            Dictionary containing system snapshot data
+        """
+        # TODO: Get list of installed packages (dpkg -l)
+        # TODO: Get system information (os.uname, /etc/os-release)
+        # TODO: Get running services (systemctl list-units)
+        # TODO: Save snapshot to JSON file in reports directory
+        pass
+    
+    def generate_patch_report(self, patch_result: Dict) -> str:
+        """
+        Generate comprehensive patch management report.
+        
+        Args:
+            patch_result: Results from patch installation
+            
+        Returns:
+            Path to generated report file
+        """
+        # TODO: Compile system status, updates, and patch results
+        # TODO: Create report dictionary with all information
+        # TODO: Save to JSON file with timestamp
+        # TODO: Return report file path
+        pass
+Step 2: Test the PatchManager
+Create a test script to verify functionality:
+
+#!/usr/bin/env python3
+# scripts/test_patch_manager.py
+
+from patch_manager import PatchManager
+import json
+
+def main():
+    """Test PatchManager functionality."""
+    # TODO: Initialize PatchManager
+    # TODO: Check for available updates
+    # TODO: Print update count and details
+    # TODO: Create system snapshot
+    # TODO: Print snapshot location
+    pass
+
+if __name__ == "__main__":
+    main()
+Task 3: Implement Vulnerability Scanner
+Step 1: Create VulnerabilityScanner Class
+Create scripts/vulnerability_scanner.py:
+
+#!/usr/bin/env python3
+"""
+Vulnerability Scanner Module
+"""
+
+import os
+import subprocess
+import json
+import datetime
+import logging
+from typing import Dict, List
+
+class VulnerabilityScanner:
+    def __init__(self):
+        """Initialize the vulnerability scanner."""
+        self.logger = logging.getLogger(__name__)
+        
+    def run_lynis_scan(self) -> Dict:
+        """
+        Run Lynis security audit.
+        
+        Returns:
+            Dictionary containing scan results
+        """
+        # TODO: Execute 'sudo lynis audit system --quiet'
+        # TODO: Parse /var/log/lynis.log for findings
+        # TODO: Extract warnings and suggestions
+        # TODO: Return structured results
+        pass
+    
+    def check_open_ports(self) -> Dict:
+        """
+        Check for open network ports.
+        
+        Returns:
+            Dictionary with open port information
+        """
+        # TODO: Run 'ss -tuln' to list listening ports
+        # TODO: Parse output for protocol, state, and address
+        # TODO: Return list of open ports
+        pass
+    
+    def check_file_permissions(self) -> Dict:
+        """
+        Check critical file permissions.
+        
+        Returns:
+            Dictionary with permission issues
+        """
+        # TODO: Define list of critical files to check
+        # TODO: Use os.stat() to get file permissions
+        # TODO: Identify world-writable or insecure permissions
+        # TODO: Return list of issues found
+        pass
+    
+    def run_comprehensive_scan(self) -> Dict:
+        """
+        Run all vulnerability scans.
+        
+        Returns:
+            Dictionary with all scan results
+        """
+        # TODO: Execute all scan methods
+        # TODO: Compile results into single dictionary
+        # TODO: Generate summary statistics
+        # TODO: Return comprehensive results
+        pass
+    
+    def save_scan_results(self, results: Dict, filename: str = None) -> str:
+        """
+        Save scan results to file.
+        
+        Args:
+            results: Scan results dictionary
+            filename: Optional custom filename
+            
+        Returns:
+            Path to saved report file
+        """
+        # TODO: Generate filename with timestamp if not provided
+        # TODO: Save results as JSON in reports directory
+        # TODO: Return file path
+        pass
+Step 2: Test Vulnerability Scanner
+Create a test script:
+
+#!/usr/bin/env python3
+# scripts/test_scanner.py
+
+from vulnerability_scanner import VulnerabilityScanner
+import json
+
+def main():
+    """Test vulnerability scanner."""
+    # TODO: Initialize scanner
+    # TODO: Run comprehensive scan
+    # TODO: Save results to file
+    # TODO: Print summary
+    pass
+
+if __name__ == "__main__":
+    main()
+Task 4: Build Automated Patch Deployment System
+Step 1: Create AutomatedPatcher Class
+Create scripts/automated_patcher.py:
+
+#!/usr/bin/env python3
+"""
+Automated Patch Deployment System
+"""
+
+import os
+import json
+import datetime
+import logging
+from patch_manager import PatchManager
+from vulnerability_scanner import VulnerabilityScanner
+
+class AutomatedPatcher:
+    def __init__(self, config_file: str = "configs/patch_config.yaml"):
+        """
+        Initialize automated patcher.
+        
+        Args:
+            config_file: Path to configuration file
+        """
+        self.patch_manager = PatchManager(config_file)
+        self.vulnerability_scanner = VulnerabilityScanner()
+        self.logger = logging.getLogger(__name__)
+        
+    def pre_patch_checks(self) -> Dict:
+        """
+        Perform pre-patch system checks.
+        
+        Returns:
+            Dictionary with check results
+        """
+        # TODO: Check disk space (need at least 1GB free)
+        # TODO: Check memory usage (should be < 90%)
+        # TODO: Create system snapshot as backup
+        # TODO: Return check results with pass/fail status
+        pass
+    
+    def post_patch_verification(self) -> Dict:
+        """
+        Perform post-patch verification.
+        
+        Returns:
+            Dictionary with verification results
+        """
+        # TODO: Check if reboot is required
+        # TODO: Verify critical services are running
+        # TODO: Check system responsiveness
+        # TODO: Return verification results
+        pass
+    
+    def execute_patch_cycle(self, security_only: bool = True) -> Dict:
+        """
+        Execute complete patch cycle.
+        
+        Args:
+            security_only: Install only security updates
+            
+        Returns:
+            Dictionary with cycle results
+        """
+        # TODO: Phase 1 - Run pre-patch checks
+        # TODO: Phase 2 - Run vulnerability scan
+        # TODO: Phase 3 - Check available updates
+        # TODO: Phase 4 - Install updates
+        # TODO: Phase 5 - Post-patch verification
+        # TODO: Phase 6 - Generate and save report
+        # TODO: Return complete cycle results
+        pass
+    
+    def rollback_patches(self, snapshot_file: str) -> Dict:
+        """
+        Rollback to previous system state.
+        
+        Args:
+            snapshot_file: Path to system snapshot
+            
+        Returns:
+            Dictionary with rollback results
+        """
+        # TODO: Load snapshot file
+        # TODO: Compare current packages with snapshot
+        # TODO: Downgrade changed packages
+        # TODO: Return rollback status
+        pass
+Step 2: Create Main Execution Script
+Create scripts/run_patch_cycle.py:
+
+#!/usr/bin/env python3
+"""
+Main script to execute patch cycle
+"""
+
+import sys
+import argparse
+from automated_patcher import AutomatedPatcher
+
+def main():
+    """
+    Main execution function.
+    """
+    # TODO: Set up argument parser for command-line options
+    # TODO: Initialize AutomatedPatcher
+    # TODO: Execute patch cycle based on arguments
+    # TODO: Print results summary
+    # TODO: Exit with appropriate status code
+    pass
+
+if __name__ == "__main__":
+    main()
+Step 3: Test Complete Workflow
+Run the complete patch cycle:
+
+# Make scripts executable
+chmod +x scripts/*.py
+
+# Run patch cycle (dry run first)
+python3 scripts/run_patch_cycle.py --dry-run
+
+# Run actual security patch cycle
+python3 scripts/run_patch_cycle.py --security-only
+
+# Check generated reports
+ls -lh reports/
+Task 5: Integrate with CI/CD Pipeline
+Step 1: Create Jenkins Pipeline Script
+Create Jenkinsfile for CI/CD integration:
+
+pipeline {
+    agent any
+    
+    stages {
+        stage('Pre-Patch Checks') {
+            steps {
+                // TODO: Run pre-patch checks
+                // TODO: Verify system readiness
+            }
+        }
+        
+        stage('Vulnerability Scan') {
+            steps {
+                // TODO: Execute vulnerability scanner
+                // TODO: Archive scan results
+            }
+        }
+        
+        stage('Install Patches') {
+            steps {
+                // TODO: Execute patch installation
+                // TODO: Handle errors and rollback if needed
+            }
+        }
+        
+        stage('Post-Patch Verification') {
+            steps {
+                // TODO: Run verification tests
+                // TODO: Generate final report
+            }
+        }
+    }
+    
+    post {
+        always {
+            // TODO: Archive reports and logs
+            // TODO: Send notifications
+        }
+    }
+}
+Step 2: Create Monitoring Dashboard Script
+Create scripts/generate_dashboard.py:
+
+#!/usr/bin/env python3
+"""
+Generate patch management dashboard
+"""
+
+import json
+import os
+from datetime import datetime, timedelta
+
+def generate_html_dashboard(reports_dir: str = "reports") -> str:
+    """
+    Generate HTML dashboard from patch reports.
+    
+    Args:
+        reports_dir: Directory containing report files
+        
+    Returns:
+        Path to generated HTML file
+    """
+    # TODO: Read all report files from directory
+    # TODO: Extract key metrics (patches installed, vulnerabilities, etc.)
+    # TODO: Generate HTML with charts and tables
+    # TODO: Save dashboard.html
+    # TODO: Return file path
+    pass
+
+def main():
+    """Main execution."""
+    # TODO: Generate dashboard
+    # TODO: Print dashboard location
+    pass
+
+if __name__ == "__main__":
+    main()
+Expected Outcomes
+After completing this lab, you should have:
+
+A functional automated patch management system
+Python modules for patch deployment and vulnerability scanning
+Automated pre-patch checks and post-patch verification
+Report generation and monitoring capabilities
+CI/CD pipeline integration for automated patching
+Understanding of patch management best practices
+Troubleshooting Tips
+Issue: Permission denied errors
+
+Solution: Ensure scripts have execute permissions (chmod +x)
+Use sudo for system-level operations
+Check user is in sudo group
+Issue: Package installation fails
+
+Solution: Run sudo apt update first
+Check disk space with df -h
+Review /var/log/apt/ logs for details
+Issue: Lynis not found
+
+Solution: Install with sudo apt install lynis
+Verify installation with which lynis
+Check PATH environment variable
+Issue: Reports not generating
+
+Solution: Ensure reports/ directory exists
+Check write permissions on directory
+Verify JSON serialization of data structures
+Conclusion
+This lab introduced automated patch management using Python and Linux tools. You learned to create a comprehensive patching system that includes vulnerability scanning, automated updates, verification, and reporting. These skills are essential for maintaining secure and up-to-date systems in production environments.
+
+Key takeaways:
+
+Automation reduces manual effort and human error
+Pre-patch checks prevent system failures
+Vulnerability scanning identifies security risks
+Comprehensive reporting enables informed decisions
+CI/CD integration enables continuous security
+Continue practicing by extending the system with email notifications, Slack integration, or support for additional Linux distributions.
