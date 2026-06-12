@@ -1,0 +1,21 @@
+[DEFAULT]
+# Ban time in seconds (10 minutes)
+bantime = 600
+
+# Find time window in seconds (10 minutes)
+findtime = 600
+
+# Number of failures before ban
+maxretry = 3
+
+# Ignore local IP addresses
+ignoreip = 127.0.0.1/8 ::1
+
+[sshd]
+enabled = true
+port = 2222
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = 3
+bantime = 1800
+findtime = 600
