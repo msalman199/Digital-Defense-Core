@@ -1,0 +1,29 @@
+# Change default port (optional but recommended)
+Port 2222
+
+# Disable root login
+PermitRootLogin no
+
+# Enable public key authentication
+PubkeyAuthentication yes
+
+# Disable password authentication
+PasswordAuthentication no
+
+# Disable empty passwords
+PermitEmptyPasswords no
+
+# Limit login attempts
+MaxAuthTries 3
+
+# Set login grace time
+LoginGraceTime 60
+
+# Disable X11 forwarding if not needed
+X11Forwarding no
+
+# Use protocol 2 only
+Protocol 2
+
+# Allow specific users only (replace with your username)
+AllowUsers $USER
