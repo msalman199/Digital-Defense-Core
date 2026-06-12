@@ -1,0 +1,13 @@
+patch_settings:
+  auto_reboot: false
+  maintenance_window: "02:00-04:00"
+  excluded_packages: []
+  security_only: true
+
+notification:
+  email_enabled: false
+  webhook_url: null
+
+logging:
+  level: INFO
+  file: logs/patch_activity.log
