@@ -1,0 +1,15 @@
+{
+    "icc": false,
+    "userns-remap": "default",
+    "no-new-privileges": true,
+    "seccomp-profile": "/etc/docker/seccomp-profile.json",
+    "log-driver": "syslog",
+    "log-opts": {
+        "syslog-address": "tcp://localhost:514"
+    },
+    "storage-driver": "overlay2",
+    "userland-proxy": false,
+    "experimental": false,
+    "live-restore": true
+}
+DAEMON_EOF
