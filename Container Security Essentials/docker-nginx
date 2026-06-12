@@ -1,0 +1,23 @@
+#include <tunables/global>
+
+profile docker-nginx flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  
+  network inet tcp,
+  network inet udp,
+  
+  deny @{PROC}/* w,
+  deny /sys/[^f]** wklx,
+  deny /sys/f[^s]** wklx,
+  deny /sys/fs/[^c]** wklx,
+  deny /sys/fs/c[^g]** wklx,
+  deny /sys/fs/cg[^r]** wklx,
+  deny /sys/firmware/** rwklx,
+  deny /sys/kernel/security/** rwklx,
+  
+  /usr/sbin/nginx ix,
+  /var/log/nginx/* w,
+  /var/cache/nginx/** rw,
+  /etc/nginx/** r,
+  /usr/share/nginx/** r,
+}
