@@ -1,0 +1,408 @@
+Digital Forensics with Autopsy
+Objectives
+By the end of this lab, students will be able to:
+
+Install and configure Autopsy digital forensics platform on Linux
+Create and analyze disk images for forensic investigation
+Extract digital evidence from file systems using Autopsy
+Identify and analyze file system artifacts including deleted files, metadata, and timeline events
+Generate forensic reports documenting findings
+Understand the fundamentals of digital forensics methodology and chain of custody
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of Linux command line operations
+Familiarity with file systems (ext4, NTFS, FAT32)
+Basic knowledge of computer storage concepts
+Understanding of file metadata and timestamps
+No prior digital forensics experience required
+Lab Environment
+Al Nafi provides ready-to-use Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Your cloud machine includes:
+
+Ubuntu 22.04 LTS
+Autopsy 4.20+ pre-installed
+Sample disk images for analysis
+All necessary forensic tools
+Task 1: Setting Up Autopsy and Creating Evidence
+Subtask 1.1: Verify Autopsy Installation
+First, let's verify that Autopsy is properly installed and accessible on your system.
+
+# Check if Autopsy is installed
+autopsy --version
+
+# If not installed, install it
+sudo apt update
+sudo apt install autopsy sleuthkit -y
+
+# Verify installation
+which autopsy
+Subtask 1.2: Create Sample Evidence Data
+We'll create a sample USB drive image with various file types to analyze.
+
+# Create a directory for our forensics work
+mkdir -p ~/forensics_lab
+cd ~/forensics_lab
+
+# Create a sample disk image (100MB)
+dd if=/dev/zero of=evidence_usb.img bs=1M count=100
+
+# Format the image with FAT32 filesystem
+sudo losetup /dev/loop0 evidence_usb.img
+sudo mkfs.fat -F 32 /dev/loop0
+
+# Mount the image to add sample files
+mkdir -p ~/forensics_lab/mount_point
+sudo mount /dev/loop0 ~/forensics_lab/mount_point
+
+# Create sample files with different timestamps
+sudo mkdir ~/forensics_lab/mount_point/Documents
+sudo mkdir ~/forensics_lab/mount_point/Pictures
+sudo mkdir ~/forensics_lab/mount_point/System
+
+# Create text files with content
+echo "This is a confidential document created on $(date)" | sudo tee ~/forensics_lab/mount_point/Documents/confidential.txt
+echo "Meeting notes: Project Alpha discussion" | sudo tee ~/forensics_lab/mount_point/Documents/meeting_notes.txt
+echo "Password list: admin123, user456, guest789" | sudo tee ~/forensics_lab/mount_point/Documents/passwords.txt
+
+# Create a hidden file
+echo "Hidden system configuration data" | sudo tee ~/forensics_lab/mount_point/.hidden_config
+
+# Create some image files (simulate with text content)
+echo "JPEG image data would be here" | sudo tee ~/forensics_lab/mount_point/Pictures/photo1.jpg
+echo "PNG image data would be here" | sudo tee ~/forensics_lab/mount_point/Pictures/screenshot.png
+
+# Create system files
+echo "System log entry: User login at $(date)" | sudo tee ~/forensics_lab/mount_point/System/system.log
+
+# Create a file and then delete it (for deleted file recovery)
+echo "This file will be deleted for forensic recovery" | sudo tee ~/forensics_lab/mount_point/deleted_file.txt
+sudo rm ~/forensics_lab/mount_point/deleted_file.txt
+
+# Unmount and detach the loop device
+sudo umount ~/forensics_lab/mount_point
+sudo losetup -d /dev/loop0
+
+echo "Sample evidence created: evidence_usb.img"
+ls -la ~/forensics_lab/evidence_usb.img
+Subtask 1.3: Calculate Hash Values for Evidence Integrity
+# Calculate MD5 and SHA256 hashes for evidence integrity
+cd ~/forensics_lab
+
+echo "Calculating hash values for evidence integrity..."
+md5sum evidence_usb.img > evidence_usb.img.md5
+sha256sum evidence_usb.img > evidence_usb.img.sha256
+
+echo "Hash values calculated:"
+cat evidence_usb.img.md5
+cat evidence_usb.img.sha256
+Task 2: Extract Evidence Using Autopsy
+Subtask 2.1: Start Autopsy Web Interface
+# Start Autopsy server
+cd ~/forensics_lab
+autopsy &
+
+# Wait for server to start
+sleep 5
+
+echo "Autopsy server started. Access it at: http://localhost:9999/autopsy"
+echo "Opening web browser..."
+
+# Open browser (if GUI available)
+if command -v firefox &> /dev/null; then
+    firefox http://localhost:9999/autopsy &
+elif command -v chromium-browser &> /dev/null; then
+    chromium-browser http://localhost:9999/autopsy &
+else
+    echo "Please open a web browser and navigate to http://localhost:9999/autopsy"
+fi
+Subtask 2.2: Create New Case in Autopsy
+Follow these steps in the Autopsy web interface:
+
+Access Autopsy Interface
+
+Open web browser to http://localhost:9999/autopsy
+Click on "New Case"
+Case Information
+
+Case Name: USB_Investigation_2024
+Description: Forensic analysis of suspicious USB drive
+Investigator Names: Your Name
+Click "New Case"
+Add Host
+
+Host Name: EVIDENCE_USB
+Description: USB drive from incident
+Time Zone: Select your local timezone
+Click "Add Host"
+Subtask 2.3: Add Evidence Image
+Add Image
+
+Click "Add Image"
+Image Type: Select "Disk"
+Import Method: Select "Copy"
+Specify Image Location
+
+Location: Browse to /home/student/forensics_lab/evidence_usb.img
+Type: "Disk Image"
+Click "Next"
+Verify Image Integrity
+
+Autopsy will calculate hash values
+Compare with your pre-calculated hashes
+Click "Add" to proceed
+Image Analysis
+
+Select analysis modules:
+File System Analysis
+Hash Analysis
+Keyword Search
+Timeline Analysis
+Click "Ok" to start analysis
+Subtask 2.4: Monitor Analysis Progress
+# Monitor Autopsy process
+echo "Monitoring analysis progress..."
+echo "Check the web interface for analysis status"
+echo "Analysis typically takes 2-5 minutes for small images"
+
+# Check system resources during analysis
+top -p $(pgrep -f autopsy) -n 1
+Task 3: Analyze File System for Artifacts
+Subtask 3.1: Examine File System Structure
+In the Autopsy web interface:
+
+Navigate File System
+
+Click on "File Analysis" tab
+Expand the disk image tree
+Examine directory structure:
+/Documents/
+/Pictures/
+/System/
+Root directory files
+View File Properties
+
+Click on confidential.txt
+Note the following metadata:
+File size
+Creation time
+Modified time
+Accessed time
+File permissions
+Extract File Content
+
+Right-click on files of interest
+Select "View" to see content
+Document findings in your notes
+Subtask 3.2: Search for Hidden and Deleted Files
+Find Hidden Files
+
+In File Analysis, look for files starting with .
+Locate .hidden_config file
+Examine its content and metadata
+Recover Deleted Files
+
+Click on "File Types" tab
+Look for "Unallocated" space
+Search for deleted file signatures
+Attempt to recover deleted_file.txt
+Keyword Search
+
+Go to "Keyword Search" tab
+Search for terms like:
+password
+confidential
+admin
+Review search results
+Subtask 3.3: Timeline Analysis
+# Generate timeline data using command line tools
+cd ~/forensics_lab
+
+# Create timeline using fls and mactime
+echo "Generating filesystem timeline..."
+fls -r -m / evidence_usb.img > timeline_body.txt
+
+# Convert to readable timeline
+mactime -b timeline_body.txt -d > filesystem_timeline.txt
+
+echo "Timeline generated. First 20 entries:"
+head -20 filesystem_timeline.txt
+In Autopsy web interface:
+
+Access Timeline
+
+Click on "Timeline" tab
+Review chronological file activity
+Look for patterns in file creation/modification
+Analyze Time Gaps
+
+Identify periods of high activity
+Note any suspicious timing patterns
+Document timeline anomalies
+Subtask 3.4: Hash Analysis and File Identification
+Hash Database Lookup
+
+Go to "Hash Analysis" tab
+Review calculated file hashes
+Check for known good/bad file signatures
+File Type Analysis
+
+Click on "File Types" tab
+Examine files by type:
+Documents
+Images
+System files
+Unknown types
+Metadata Extraction
+
+Select image files
+Extract EXIF data if available
+Document any embedded metadata
+Task 4: Document Findings and Generate Report
+Subtask 4.1: Create Investigation Summary
+# Create investigation report
+cd ~/forensics_lab
+cat > investigation_report.txt << 'EOF'
+DIGITAL FORENSICS INVESTIGATION REPORT
+=====================================
+
+Case Information:
+- Case Name: USB_Investigation_2024
+- Evidence: evidence_usb.img
+- Investigator: [Your Name]
+- Date: $(date)
+- Tools Used: Autopsy 4.20+, SleuthKit
+
+Evidence Integrity:
+- MD5 Hash: $(cat evidence_usb.img.md5)
+- SHA256 Hash: $(cat evidence_usb.img.sha256)
+
+Key Findings:
+1. File System Analysis
+   - File system type: FAT32
+   - Total files found: [Count from analysis]
+   - Hidden files discovered: .hidden_config
+   - Deleted files recovered: deleted_file.txt
+
+2. Significant Files Identified:
+   - confidential.txt: Contains sensitive document
+   - passwords.txt: Contains password list
+   - meeting_notes.txt: Contains project information
+   - .hidden_config: Hidden system configuration
+
+3. Timeline Analysis:
+   - File creation timeframe: [Document from timeline]
+   - Last activity: [Document from timeline]
+   - Suspicious patterns: [Document any anomalies]
+
+4. Metadata Analysis:
+   - File timestamps preserved
+   - No evidence of timestamp manipulation
+   - Original file structure intact
+
+Conclusions:
+[Document your conclusions based on findings]
+
+Chain of Custody:
+- Evidence acquired: $(date)
+- Hash verification: Passed
+- Analysis completed: $(date)
+EOF
+
+echo "Investigation report created: investigation_report.txt"
+Subtask 4.2: Export Evidence from Autopsy
+In Autopsy web interface:
+
+Export Files of Interest
+
+Select important files
+Right-click and choose "Export"
+Save to /home/student/forensics_lab/exported_evidence/
+Generate Autopsy Report
+
+Go to "Report" tab
+Select report format: HTML
+Include all analysis modules
+Generate comprehensive report
+Save Case Data
+
+Ensure all case data is saved
+Note case database location
+Backup critical findings
+Subtask 4.3: Verify Evidence Integrity
+# Final integrity check
+cd ~/forensics_lab
+
+echo "Performing final evidence integrity verification..."
+
+# Recalculate hashes
+md5sum evidence_usb.img > final_check.md5
+sha256sum evidence_usb.img > final_check.sha256
+
+# Compare with original hashes
+echo "Comparing hash values:"
+diff evidence_usb.img.md5 final_check.md5
+diff evidence_usb.img.sha256 final_check.sha256
+
+if [ $? -eq 0 ]; then
+    echo "SUCCESS: Evidence integrity maintained throughout analysis"
+else
+    echo "WARNING: Hash mismatch detected - investigate immediately"
+fi
+
+# Clean up temporary files
+rm final_check.md5 final_check.sha256
+Troubleshooting Common Issues
+Issue 1: Autopsy Won't Start
+# Check if port 9999 is already in use
+netstat -tlnp | grep 9999
+
+# Kill existing Autopsy processes
+pkill -f autopsy
+
+# Restart Autopsy
+cd ~/forensics_lab
+autopsy &
+Issue 2: Cannot Mount Loop Device
+# Check available loop devices
+losetup -a
+
+# Find free loop device
+sudo losetup -f
+
+# Use the free device (replace X with available number)
+sudo losetup /dev/loopX evidence_usb.img
+Issue 3: Browser Cannot Connect
+# Check if Autopsy is running
+ps aux | grep autopsy
+
+# Check firewall settings
+sudo ufw status
+
+# Verify localhost connectivity
+curl -I http://localhost:9999/autopsy
+Key Concepts Summary
+Digital Forensics: The process of collecting, preserving, analyzing, and presenting digital evidence in a legally admissible manner.
+
+Chain of Custody: Documentation that tracks the handling of evidence from collection to presentation, ensuring integrity and admissibility.
+
+Hash Values: Cryptographic checksums used to verify evidence integrity and detect any modifications.
+
+File System Artifacts: Digital traces left by file system operations, including metadata, deleted files, and timeline information.
+
+Timeline Analysis: Chronological examination of file system events to reconstruct user activity and system changes.
+
+Conclusion
+In this lab, you have successfully completed a comprehensive digital forensics investigation using Autopsy. You learned to:
+
+Set up and configure Autopsy for forensic analysis
+Create and preserve digital evidence with proper integrity verification
+Extract and analyze file system artifacts including hidden and deleted files
+Perform timeline analysis to understand chronological events
+Generate professional forensic reports documenting your findings
+These skills are fundamental to digital forensics and incident response. The ability to properly collect, analyze, and document digital evidence is crucial for cybersecurity professionals, law enforcement, and legal proceedings. The methodical approach you practiced ensures that evidence remains admissible and findings are reliable.
+
+Digital forensics plays a vital role in modern cybersecurity by helping organizations understand security incidents, recover from attacks, and support legal actions. The tools and techniques you learned with Autopsy provide a solid foundation for more advanced forensic investigations and specialized analysis scenarios.
+
+Remember that in real-world scenarios, proper legal authorization, chain of custody documentation, and adherence to forensic best practices are essential for any digital investigation.
